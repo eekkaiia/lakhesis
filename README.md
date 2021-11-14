@@ -13,7 +13,7 @@ During experimentation with the model it was noted that adding a second sand pil
 Keywords
 --------
 
-[abelian sandpile model][3], [cellular automaton][4], [Self-organized criticality][5]
+[abelian sandpile model][3], [cellular automaton][4], [self-organized criticality][5]
 
 
 Requirements
