@@ -15,7 +15,6 @@ Keywords
 
 [abelian sandpile model][3], [cellular automaton][4], [Self-organized criticality][5]
 
-Build Status
 
 Requirements
 ------------
