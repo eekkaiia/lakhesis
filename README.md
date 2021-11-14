@@ -15,6 +15,7 @@ Keywords
 
 [abelian sandpile model][3], [cellular automaton][4], [self-organized criticality][5]
 
+![Lakhesis image](/images/Lakhesis_0977657.jpg)
 
 Requirements
 ------------
