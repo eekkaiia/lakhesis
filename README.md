@@ -3,6 +3,8 @@ Lakhesis
 
 Klotho spins the thread of life, Lakhesis measures it, Atropos cuts it short. [Theoi][1] [Wikipedia][2]
 
+![Lakhesis image](/images/Lakhesis_0977657.jpg)
+
 Description
 -----------
 
@@ -14,8 +16,6 @@ Keywords
 --------
 
 [abelian sandpile model][3], [cellular automaton][4], [self-organized criticality][5]
-
-![Lakhesis image](/images/Lakhesis_0977657.jpg)
 
 Requirements
 ------------
