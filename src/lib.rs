@@ -328,21 +328,3 @@ impl Model {
             255];
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    #[test]
-    fn conversions() {
-        let table_width: usize = 797;
-        let table_height: usize = 597;
-        let idx: usize = 159_401;
-        let x: usize = 1;
-        let y: usize = 200;
-        assert_eq!(Table::xy_to_idx(table_width, x, y), 159_401);
-        assert_eq!(Table::idx_to_xy(table_width, idx),(1, 200));
-        assert_eq!(Table::calc_center_idx(table_width, table_height), 237_904);
-        assert_eq!(Table::calc_center_xy(table_width, table_height), (398 , 298));
-    }
-}
