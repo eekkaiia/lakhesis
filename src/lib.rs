@@ -328,3 +328,19 @@ impl Model {
             255];
     }
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn conversions() {
+        let table = Table::default();
+        let idx: usize = 256_001;
+        let x: usize = 1;
+        let y: usize = 200;
+        assert_eq!(table.xy_to_idx(x, y), 256_001);
+        assert_eq!(table.idx_to_xy(idx),(1, 200));
+        assert_eq!(table.calc_center_idx(), 461_440);
+        assert_eq!(table.calc_center_xy(), (640 , 360));
+    }
+}
