@@ -36,7 +36,7 @@ pub fn animate_sandpile() {
     let mut reset: bool = false;
     let mut video: usize = 0;
     let mut additional_cells: usize = rng.gen_range(0..MAX_DROPS);
-    println!("number of additional drop points: {}\ncell times {:?}\ndrop cells {:?}",
+    println!("number of random drop points assigned: {}\ncell times {:?}\ndrop cells {:?}",
         &additional_cells, &model.drop_times, &model.drop_cells);
     let mut ac: usize = 0;
     event_loop.run(move |event, _, control_flow| {
@@ -71,14 +71,14 @@ pub fn animate_sandpile() {
                     model.active_cells += 1;
                     model.drop_times[model.active_cells - 1] = model.table.total_grains;
                 }
-                println!("additional drop cell - current active cells = {}", &model.active_cells);
+                println!("added drop cell - current active cells = {}", &model.active_cells);
             }
             // cause a random color change for sandpiles
             if input.key_pressed(VirtualKeyCode::C) {
                 // set random variable to false so color choice persists
                 model.random = false;
                 model.random_colors();
-                println!("color change - random = {:?}", &model.random);
+                println!("color change - random is now set to {:?}", &model.random);
             }
             // new simulation - reset to default
             if input.key_pressed(VirtualKeyCode::N) {
@@ -91,7 +91,7 @@ pub fn animate_sandpile() {
             // toggle random colors and drop cells
             if input.key_pressed(VirtualKeyCode::R) {
                 model.random = !model.random;
-                println!("random = {:?}", &model.random);
+                println!("random is now set to {:?}", &model.random);
             }
             // save image and model up to this point
             if input.key_released(VirtualKeyCode::S) {
@@ -104,7 +104,7 @@ pub fn animate_sandpile() {
                 println!("video started at interval = {}", &model.interval);
             }
             // resize the window
-            // table size kept at 1200x900 and window is not recentered
+            // table size kept at 1280x720 and window is not recentered
             if let Some(size) = input.window_resized() {
                 pixels.resize_surface(size.width, size.height);
             }
@@ -136,7 +136,7 @@ pub fn animate_sandpile() {
             paused = false;
             reset = false;
             additional_cells = rng.gen_range(0..MAX_DROPS);
-            println!("number of additional drop points: {}\ncell times {:?}\ndrop cells {:?}",
+            println!("new simulation started\nnumber of random drop points assigned: {}\ncell times {:?}\ndrop cells {:?}",
                 &additional_cells, &model.drop_times, &model.drop_cells);
             ac = 0;
             window.request_redraw();
