@@ -12,6 +12,8 @@ Lakhesis is a Rust implementation of the abelian sandpile model on a rectangular
 
 During experimentation with the model it was noted that adding a second sand pile resulted in interesting, and recurring, patterns at the boundary between the two piles. Lakhesis has been set up in order to explore how these boundary patterns develop and how factors such as the number of additional piles and their orientation and distance from each other affect these patterns. The lattice is relatively small (1280 x 720 pixels - 720p), again envisioned as a table that sand grains can fall off once they reach the edge, and the model runs till 2 million sand grains have been dropped after which it restarts on a blank table from a default configuration. In the default setting Lakhesis randomly generates up to twelve grid cells within the lattice onto which sand grains are dropped. The drop points are confined to an inner rectangular area surrounded by a 250 pixel boundary. This boundary leaves room for sand piles to develop and keeps the number of lost grains to a minimum. Sand grains are added to each new point starting at a randomly generated time, while existing piles continue to grow. The colors for piles with zero, one, and two grains are randomly generated and change each time a new pile is started. Piles with three grains are black in order to emphasis the patterns that cross through these stable areas. Many of these patterns have the appearance of threads intertwining and weaving into textile-like surfaces (i.e. the name of the crate - apologies for the mixed metaphors). Some of the random aspects of the model can be altered through keyboard commands during execution (see Usage below).
 
+![Lakhesis thread image](/images/LakhesisThread.GIF)
+
 Keywords
 --------
 
