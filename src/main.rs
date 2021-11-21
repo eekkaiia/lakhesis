@@ -1,3 +1,6 @@
+use std::time::{Instant, Duration};
+use rodio::{OutputStream, Sink};
+use rodio::source::{SineWave, Source};
 use winit::event::{Event, VirtualKeyCode};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
@@ -14,6 +17,12 @@ const VIDEO_FRAME_COUNT: usize = 600;       // 10 seconds at 60fps
 fn main() {
     println!("Starting Lakhesis");
     animate_sandpile();
+}
+
+pub fn measure_elapsed_time <F: FnOnce()>(f: F) -> Duration {
+    let t0 = Instant::now();
+    f();
+    Instant::now() - t0
 }
 
 pub fn animate_sandpile() {
@@ -34,11 +43,18 @@ pub fn animate_sandpile() {
         .expect("Unable to create new surface texture");
     let mut paused = false;
     let mut reset: bool = false;
+    let mut audio: bool = false;
     let mut video: usize = 0;
     let mut additional_cells: usize = rng.gen_range(0..MAX_DROPS);
-    println!("number of random drop points assigned: {}\ncell times {:?}\ndrop cells {:?}",
+    println!("Random additional sandpiles: {}\nTimes {:?}\nLocations {:?}",
         &additional_cells, &model.drop_times, &model.drop_cells);
     let mut ac: usize = 0;
+    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+    let mut sink: Vec<Sink> = Vec::new();
+    for _i in 0..MAX_DROPS {
+        sink.push(Sink::try_new(&stream_handle).unwrap());
+    }
+    let mut max_avalanche: usize = 0;
     event_loop.run(move |event, _, control_flow| {
         if input.update(&event) {
             // escape Q key to quit
@@ -80,6 +96,10 @@ pub fn animate_sandpile() {
                 model.random_colors();
                 println!("color change - random is now set to {:?}", &model.random);
             }
+            //turn audio on/off
+            if input.key_pressed(VirtualKeyCode::L) {
+                audio = !audio;
+            }
             // new simulation - reset to default
             if input.key_pressed(VirtualKeyCode::N) {
                 reset = true;
@@ -111,17 +131,29 @@ pub fn animate_sandpile() {
         }
         // if !paused add a sand grain and resolve unstable sandpiles
         if !paused || input.key_pressed(VirtualKeyCode::Space) {
-            model.add_grain(ac);
-            // check if a new drop cell is pending if random = true
-            if model.random {
-                for i in 1..additional_cells + 1 {
-                    if model.drop_times[i] == model.table.total_grains {
-                        model.active_cells += 1;
-                        model.random_colors();
+            let dt = measure_elapsed_time(|| {
+                model.add_grain(ac);
+                // check if a new drop cell is pending if random = true
+                if model.random {
+                    for i in 1..additional_cells + 1 {
+                        if model.drop_times[i] == model.table.total_grains {
+                            model.active_cells += 1;
+                            model.random_colors();
+                        }
                     }
                 }
+                if model.active_cells - 1 > ac { ac += 1; } else { ac = 0; }
+            });
+            if audio {
+                if model.avalanche > max_avalanche { max_avalanche = model.avalanche.clone() };
+                let source1 = SineWave::new((1000.0 - ((model.avalanche as f32 / max_avalanche as f32) * 800.0)).trunc() as u32)
+                    .take_duration(Duration::from_secs_f32(dt.as_secs() as f32 + dt.subsec_nanos() as f32 * 1e-9)
+                    ).amplify(0.10);
+                let source2 = SineWave::new((2000.0 - ((model.avalanche as f32 / max_avalanche as f32) * 1600.0)).trunc() as u32)
+                    .take_duration(Duration::from_secs_f32(dt.as_secs() as f32 + dt.subsec_nanos() as f32 * 1e-9)
+                    ).amplify(0.08);
+                sink[ac].append(Source::mix(source1, source2));
             }
-            if model.active_cells - 1 > ac { ac += 1; } else { ac = 0; }
         }
         if model.table.total_grains % model.interval == 0 {
             window.request_redraw();
@@ -136,7 +168,7 @@ pub fn animate_sandpile() {
             paused = false;
             reset = false;
             additional_cells = rng.gen_range(0..MAX_DROPS);
-            println!("new simulation started\nnumber of random drop points assigned: {}\ncell times {:?}\ndrop cells {:?}",
+            println!("new simulation started\nRandom additional sandpiles: {}\nTimes {:?}\nLocations {:?}",
                 &additional_cells, &model.drop_times, &model.drop_cells);
             ac = 0;
             window.request_redraw();
