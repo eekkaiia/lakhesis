@@ -16,6 +16,10 @@ During experimentation with the model it was noted that adding a second sand pil
 
 ![Lakhesis threads](/images/LakhesisThread.GIF)
 
+
+* [Try a web browser version!][8]
+
+
 Keywords
 --------
 
@@ -86,3 +90,4 @@ The content of this repository is licensed under [Apache License 2.0](https://ww
 [5]: https://www.rust-lang.org
 [6]: https://macroquad.rs
 [7]: https://github.com/not-fl3/macroquad
+[8]: https://eekkaiia.github.io/lakhesis/
