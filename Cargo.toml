@@ -1,4 +1,4 @@
-# Copyright © 2021 Erik Steinbach eekkaiia@gmail.com
+# Copyright © 2022 Erik Steinbach eekkaiia@gmail.com
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # limitations under the License.
 
 [package]
-name                    = "lakhesis"
+name 					= "lakhesis"
 version                 = "0.1.0"
 edition                 = "2021"
 resolver                = "2"
@@ -26,7 +26,9 @@ categories              = ["computer-modeling"]
 keywords                = [
                             "abelian sandpile model",
                             "cellular automaton",
-                            "self-organized criticality"
+                            "self-organized criticality",
+							"rust",
+							"macroquad"
                           ]
 homepage                = "https://github.com/eekkaiia/lakhesis"
 repository              = "https://github.com/eekkaiia/lakhesis"
@@ -35,8 +37,7 @@ readme                  = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rand                    = "0.8"
-winit                   = "0.25.0"
-winit_input_helper      = "0.10.0"
-pixels                  = "0.7.0"
-image                   = "0.23.14"
+macroquad				= "0.3.23"
+
+[profile.dev.package.'*']
+opt-level = 3
