@@ -54,7 +54,7 @@ Keyboard commands are available after execution starts and are shown below the s
 * [CTRL|N] Start a new simulation
 * [CTRL|Q] Quit the program
 
-The `macroquad` game engine can be compiled to run on web browsers:  [here][7]
+The `macroquad` game engine can be compiled to run on web browsers:  [instructions][7]
 
 Before compiling `lakhesis` for web usage it is suggested that the IO_SUPPORTED constant in main.rs be set to "false". This will remove the [S]napshot and [V]ideo options since attempting to save a file from within a web browser will cause a fatal error.
 
@@ -85,4 +85,4 @@ The content of this repository is licensed under [Apache License 2.0](https://ww
 [4]: https://en.wikipedia.org/wiki/Self-organized_criticality
 [5]: https://www.rust-lang.org
 [6]: https://macroquad.rs
-[7]: [https://macroquad.rs](https://github.com/not-fl3/macroquad)
+[7]: https://github.com/not-fl3/macroquad
