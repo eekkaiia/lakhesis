@@ -62,7 +62,7 @@ A `rust` local server can be used to host the webpage.  After following the dire
 
 ```sh
 cargo install basic-http-server
-basic-http-server .
+basic-http-server
 ```
 
 Comments
