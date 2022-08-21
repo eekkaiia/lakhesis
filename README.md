@@ -54,9 +54,9 @@ Keyboard commands are available after execution starts and are shown below the s
 * [CTRL|N] Start a new simulation
 * [CTRL|Q] Quit the program
 
-The `macroquad` game engine can be compiled to run on web browsers - directions are here: [https://github.com/not-fl3/macroquad]
+The `macroquad` game engine can be compiled to run on web browsers:  [https://github.com/not-fl3/macroquad]
 
-Before compiling `lakhesis` for web usage it is suggested that the IO_SUPPORTED constant in main.rs be set to "false". This will remove the [S]napshot and [V]ideo options since attempting to save a file will cause a fatal error.
+Before compiling `lakhesis` for web usage it is suggested that the IO_SUPPORTED constant in main.rs be set to "false". This will remove the [S]napshot and [V]ideo options since attempting to save a file from within a web browser will cause a fatal error.
 
 A `rust` local server can be used to host the webpage.  After following the directions above open a terminal in the project folder:
 
