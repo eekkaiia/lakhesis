@@ -7,9 +7,9 @@ use macroquad::texture::Image;
 // number of grains to initiate a 'collapse' of the sandpile
 const CRITICAL: u8 = 4;
 // default width of table
-pub const MODEL_WIDTH: usize = 1280;
+pub const MODEL_WIDTH: usize = 960;
 // default height of table
-pub const MODEL_HEIGHT: usize = 720;
+pub const MODEL_HEIGHT: usize = 540;
 // number of iterations before simulation resets
 pub const MAX_ITERATIONS: usize = 16_777_216;
 // maximum number of drop cells

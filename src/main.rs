@@ -1,5 +1,24 @@
-use lakhesis::{Model, MAX_DROPS, MAX_ITERATIONS, MODEL_HEIGHT, MODEL_WIDTH};
-use macroquad::prelude::*;
+use lakhesis::{ Model, MAX_DROPS, MAX_ITERATIONS, MODEL_WIDTH, MODEL_HEIGHT };
+
+// use macroquad::prelude::*;
+// use macroquad::camera::*;
+// use macroquad::file::*;
+use macroquad::input::*;
+//use macroquad::material::*;
+use macroquad::math::*;
+//use macroquad::models::*;
+use macroquad::shapes::*;
+use macroquad::text::*;
+// use macroquad::texture::*;
+use macroquad::time::*;
+use macroquad::window::*;
+use macroquad::color::colors::*;
+use macroquad::color::Color;
+// use glam;
+// use quad_rand as rand;
+// use macroquad::experimental::*;
+// use macroquad::color_u8;
+
 
 // number of PNG frames to create 10 second video at 60fps
 const VIDEO_FRAME_COUNT: usize = 600;
@@ -10,8 +29,8 @@ const IO_SUPPORTED: bool = true;
 fn window_configuration() -> Conf {
     Conf {
         window_title: "L A K H E S I S".to_owned(),
-        window_width: 1280, // 1280 x 720 for 720p images
-        window_height: 800, // top 720 for image - bottom 80 for info and stats
+        window_width: MODEL_WIDTH.try_into().expect("Model too wide for i32"),
+        window_height: MODEL_HEIGHT.try_into().expect("Model too high for i32"),
         window_resizable: false,
         ..Default::default()
     }
@@ -20,7 +39,7 @@ fn window_configuration() -> Conf {
 #[macroquad::main(window_configuration)]
 async fn main() {
     let mut model = Model::default();
-    let mut user_decided_to_exit: bool = false;
+	let mut info: bool = true;
     let mut paused: bool = true;
     let mut increment: bool = false;
     let mut reset: bool = false;
@@ -28,17 +47,19 @@ async fn main() {
     let mut add: bool = false;
     let mut ac: usize = 0;
     let mut magnify: bool = false;
-    let mut temp: String =
-        "To start the abelian sand model press the [A] key - the dot is the center of the frame"
-            .to_string();
+    let mut temp: String = "To start the abelian sand model press the [A] key".to_string();
     let mut context: Option<&str> = Some(&temp);
-
-    clear_background(BLACK);
+	let mut background: bool = true;
     // start macroquad loop
     loop {
+		if background {
+			clear_background(BLACK);
+		} else {
+			clear_background(WHITE);
+		}
         // draw centerpoint - will eventually be hidden by model
         let (ccol, crow) = model.calc_center_xy();
-        draw_rectangle(ccol as f32 - 1.0, crow as f32 - 1.0, 2.0, 2.0, WHITE);
+        draw_rectangle(ccol as f32 - 1.0, crow as f32 - 1.0, 2.0, 2.0, BLUE);
         //draw abelian sand model
         draw(&model);
         // get mouse position and limit extent if magnify is on
@@ -58,77 +79,86 @@ async fn main() {
             };
             magnify_box(&model, &mx, &my);
         }
-
-        let mut label1 = "[A]dd | [C]olors | [P]ause/resume | [Spacebar]step | [Up]interval | [Down]interval | [M]agnify | [S]napshot | [V]ideo | [CTRL][N]ew | [CTRL][Q]uit".to_string();
-        if !IO_SUPPORTED {
-            label1 = "[A]dd | [C]olors | [P]ause/resume | [Spacebar]step | [Up]interval | [Down]interval | [M]agnify | [CTRL][N]ew | [Q]uit".to_string();
-        }
-        let label2 = format!("Grains Dropped: {}    Grains Lost: {}    Interval: {}    Active Cells: {}    Mouse position: {} {}    FPS: {}    Frame time: {:07.4} seconds",
+		
+		if info {
+			draw_rectangle(2.0, 2.0, MODEL_WIDTH as f32 - 2.0, 57.0, DARKBLUE);
+			let label1 = format!("Sand grains: {}   Lost: {}   Interval: {}   Active Cells: {}   Mouse position: {} {}   FPS: {}   Frame time: {:08.4} seconds",
 							&model.total_grains, &model.lost_grains, &model.interval, &model.active_cells, &mx, &my, &get_fps(), &get_frame_time());
+        	let mut label2 = "[A]dd | [C]olors | [I]nfo | [P]ause/resume | [Spacebar]step | [Up]interval | [Down]interval | [M]agnify | [S]napshot | [CTRL][N]ew".to_string();
+        	if !IO_SUPPORTED {
+            	label2 = "[A]dd | [C]olors | [I]nfo | [P]ause/resume | [Spacebar]step | [Up]interval | [Down]interval | [M]agnify".to_string();
+        	}
+        	
+        	draw_text(&label1, 5.0, 15.0, 16.0, WHITE);
+        	draw_text(&label2, 5.0, 33.0, 16.0, WHITE);
+        	if context == None {
+				draw_text("Press [I] to hide this control panel", 5.0, 51.0, 16.0, YELLOW)
+			} else {
+            	draw_text(context.unwrap(), 5.0, 51.0, 16.0, YELLOW)
+        	};
 
-        draw_text(&label1, 20.0, 739.0, 16.0, WHITE);
-        draw_text(&label2, 20.0, 759.0, 16.0, WHITE);
-        if context != None {
-            draw_text(context.unwrap(), 20.0, 779.0, 16.0, YELLOW)
-        };
-
-        if paused {
-            draw_text("PAUSED", 1163.0, 742.0, 24.0, ORANGE);
-            if model.total_grains >= MAX_ITERATIONS {
-                context = Some("Exceeded maximum number of sand grains");
-            }
-        }
-        // draw box around control area
-        draw_rectangle_lines(
-            1.0,
-            MODEL_HEIGHT as f32 + 1.0,
-            MODEL_WIDTH as f32 - 1.0,
-            79.0,
-            2.0,
-            WHITE,
-        );
+        	if paused {
+            	draw_text("PAUSED", MODEL_WIDTH as f32 - 90.0, 51.0, 16.0, ORANGE);
+            	if model.total_grains >= MAX_ITERATIONS {
+                	context = Some("Exceeded maximum number of sand grains");
+            	}
+        	}
+		} else {
+			draw_rectangle(2.0, 2.0, 49.0, 18.0, DARKBLUE);
+			draw_text("[I]nfo", 4.0, 15.0, 16.0, WHITE);
+		}
+		
         // draw crosshairs - thick ones if waiting to add active cell
         if mx >= 0.0 && mx < MODEL_WIDTH as f32 && my >= 0.0 && my < MODEL_HEIGHT as f32 {
             if add {
-                draw_line(mx - 10.0, my, mx + 10.0, my, 3.0, WHITE);
-                draw_line(mx, my - 10.0, mx, my + 10.0, 3.0, WHITE);
+                draw_line(mx - 10.0, my, mx + 10.0, my, 3.0, BLUE);
+                draw_line(mx, my - 10.0, mx, my + 10.0, 3.0, BLUE);
             } else {
-                draw_line(mx - 10.0, my, mx + 10.0, my, 1.0, WHITE);
-                draw_line(mx, my - 10.0, mx, my + 10.0, 1.0, WHITE);
+                draw_line(mx - 10.0, my, mx + 10.0, my, 1.0, BLUE);
+                draw_line(mx, my - 10.0, mx, my + 10.0, 1.0, BLUE);
             }
         }
+		// draw box around table
+		draw_rectangle_lines(
+			1.0,
+			1.0,
+        	MODEL_WIDTH as f32 - 1.0,
+        	MODEL_HEIGHT as f32 - 1.0,
+			2.0,
+			DARKBLUE,
+		);
         match get_last_key_pressed() {
             Some(KeyCode::A) => {
                 // add a new active cell
                 if model.active_cells < MAX_DROPS {
                     paused = true;
                     add = true;
-                    temp = format!("Use the crosshairs to pick a point in the area above and click the left mouse button - up to {} points can be added", MAX_DROPS);
-                    context = Some(&temp);
+                    context = Some("Use the crosshairs to choose a starting point and click the left mouse button - press [ESC] to cancel");
                 } else {
                     temp = format!("Maximum number of active points ({}) reached", MAX_DROPS);
                     context = Some(&temp);
                 }
             }
-            Some(KeyCode::C) => model.random_colors(), // cause a random color change for sandpiles
+			Some(KeyCode::B) => background = !background,	// toggle background between BLACK and WHITE
+            Some(KeyCode::C) => model.random_colors(), 		// cause a random color change for sandpiles
+			Some(KeyCode::I) => {
+				info = !info;
+				context = None;
+			},
             Some(KeyCode::M) => magnify = !magnify,
             Some(KeyCode::N) => {
                 // new simulation - reset to default
-                if is_key_down(KeyCode::LeftControl) || is_key_down(KeyCode::RightControl) {
-                    reset = true;
-                } else {
-                    context = Some("Press [CTRL][N] to start a new simulation or [ESC] to cancel");
-                }
+				if IO_SUPPORTED {
+                	if is_key_down(KeyCode::LeftControl) || is_key_down(KeyCode::RightControl) {
+                    	reset = true;
+                	} else {
+                    	context = Some("Press [CTRL][N] to start a new simulation or [ESC] to cancel");
+                	}
+				} else {
+					context = Some("Click the refresh button in this browser tab to start a new simulation");
+				}
             }
             Some(KeyCode::P) => paused = !paused, // pause or restart the simulation
-            Some(KeyCode::Q) => {
-                // Q to quit
-                if is_key_down(KeyCode::LeftControl) || is_key_down(KeyCode::RightControl) {
-                    user_decided_to_exit = true;
-                } else {
-                    context = Some("Press [CTRL][Q] to Exit");
-                }
-            }
             Some(KeyCode::S) => {
                 // save image and model up to this point
                 if IO_SUPPORTED {
@@ -156,6 +186,7 @@ async fn main() {
                 // spacebar to step one interval at a time
                 paused = true; // spacebar is frame-step, so ensure we're paused
                 increment = true;
+				context = Some("Press [Spacebar] to increment model one interval - press [P] to resume automatic updates");
             }
             Some(KeyCode::Up) => {
                 // increase interval by 4x up to 65_536 (4^8)
@@ -230,10 +261,6 @@ async fn main() {
             magnify = false;
             context = Some("To start the abelian sand model press the [A] key");
         }
-        if user_decided_to_exit {
-            break;
-        }
-
         next_frame().await;
     }
 }
@@ -292,7 +319,7 @@ fn magnify_box(model: &Model, mx: &f32, my: &f32) {
         128.0,
         128.0,
         2.0,
-        WHITE,
+        SKYBLUE,
     );
     draw_rectangle_lines(
         // box around cursor
@@ -301,6 +328,6 @@ fn magnify_box(model: &Model, mx: &f32, my: &f32) {
         32.0,
         32.0,
         2.0,
-        WHITE,
+        SKYBLUE,
     );
 }
