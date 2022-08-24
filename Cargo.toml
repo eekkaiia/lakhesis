@@ -13,7 +13,7 @@
 # limitations under the License.
 
 [package]
-name 					= "lakhesis"
+name                    = "lakhesis"
 version                 = "0.1.0"
 edition                 = "2021"
 resolver                = "2"
@@ -27,8 +27,8 @@ keywords                = [
                             "abelian sandpile model",
                             "cellular automaton",
                             "self-organized criticality",
-							"rust",
-							"macroquad"
+                            "rust",
+                            "macroquad"
                           ]
 homepage                = "https://github.com/eekkaiia/lakhesis"
 repository              = "https://github.com/eekkaiia/lakhesis"
@@ -37,9 +37,7 @@ readme                  = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-macroquad				= "0.3.6"
-
-# macroquad				= { version = "0.3.23", default-features = false }
+macroquad               = "0.3.23"
 
 [profile.dev.package.'*']
-opt-level = 3
+opt-level               = 3
