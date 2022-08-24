@@ -7,10 +7,10 @@ use macroquad::texture::Image;
 // number of grains to initiate a 'collapse' of the sandpile
 const CRITICAL: u8 = 4;
 // default width of table
-pub const MODEL_WIDTH: usize = 960;
-// default height of table
-pub const MODEL_HEIGHT: usize = 540;
-// number of iterations before simulation resets
+pub const MODEL_WIDTH: usize = 2_700; // 2_700 x 2_700 grid should contain a single 17M-grain sandpile
+                                      // default height of table
+pub const MODEL_HEIGHT: usize = 2_700; // this would = 7_290_000 cells
+                                       // number of iterations before simulation resets
 pub const MAX_ITERATIONS: usize = 16_777_216;
 // maximum number of drop cells
 pub const MAX_DROPS: usize = 32;
@@ -30,15 +30,15 @@ impl Hues {
     fn default() -> Self {
         let untouched: Color = Color::new(0.00, 0.00, 0.00, 0.00);
         let zero_grains: Color = Color::new(0.00, 0.47, 0.95, 1.00);
-        let one_grain: Color = Color::new(0.99, 0.98, 0.00, 1.00);
-        let two_grains: Color = Color::new(0.00, 0.89, 0.19, 1.00);
+        let one_grain: Color = Color::new(0.00, 0.89, 0.19, 1.00);
+        let two_grains: Color = Color::new(0.99, 0.98, 0.00, 1.00);
         let three_grains: Color = Color::new(0.00, 0.00, 0.00, 0.00);
         let four_grains: Color = Color::new(0.90, 0.16, 0.22, 1.00);
         Self {
             untouched,    // BLANK
             zero_grains,  // BLUE
-            one_grain,    // YELLOW
-            two_grains,   // GREEN
+            one_grain,    // GREEN
+            two_grains,   // YELLOW
             three_grains, // BLANK stable three grain piles make up the large triangular areas
             // set to blank to highlight 'threads' of 0, 1, and 2 grain cells
             four_grains, // RED for version where collapse occurs at five grains
@@ -97,6 +97,7 @@ impl Model {
             avalanche: 0,
         }
     }
+    /// calc_center_idx() returns the index of the center cell
     pub fn calc_center_idx(&self) -> usize {
         let size = self.width.checked_mul(self.height).expect("Table too big");
         let center_idx: usize = {
@@ -112,13 +113,16 @@ impl Model {
         };
         center_idx
     }
+    /// calc_center_xy() returns the (x, y) coordinates of the center cell
     pub fn calc_center_xy(&self) -> (usize, usize) {
         let temp: usize = self.calc_center_idx();
         self.idx_to_xy(temp)
     }
+    /// xy_to_idx() converts cell (x, y) coordinates into vector index
     pub fn xy_to_idx(&self, x: usize, y: usize) -> usize {
         (y * self.width) + x
     }
+    /// idx_to_xy() converts cell vector index into (x, y) coordinates
     pub fn idx_to_xy(&self, idx: usize) -> (usize, usize) {
         let y = (idx as f64 / self.width as f64).trunc() as usize;
         let x = idx % self.width;
@@ -253,20 +257,66 @@ impl Model {
             1.0,
         );
     }
-    /// paint() exports a PNG image of the current model using a macroquad function
-    pub fn paint(&self) {
-        let mut sand_painting = Image::gen_image_color(
-            self.width.try_into().expect("width to wide"),
-            self.height.try_into().expect("height to high"),
-            BLANK,
-        );
-        for row in 0..self.height - 1 {
-            for column in 0..self.width - 1 {
-                match self.cells[(row * self.width) + column].grains {
+    /// find_extent() returns the minimum x, minimum y, width, and height of the active area of the model
+    // returned tuple matches arguments for paint()
+    pub fn find_extent(&self) -> (u32, u32, u16, u16) {
+        let mut min_x: u32 = MODEL_WIDTH.try_into().expect("Too big");
+        let mut max_x: u32 = 0;
+        let mut min_y: u32 = MODEL_HEIGHT.try_into().expect("Too big");
+        let mut max_y: u32 = 0;
+        for i in 0..self.cells.len() {
+            if self.cells[i].grains > 0 || self.cells[i].collapses > 0 {
+                let (this_x, this_y) = self.idx_to_xy(i);
+                if (this_x as u32) < min_x {
+                    min_x = this_x as u32
+                };
+                if (this_x as u32) > max_x {
+                    max_x = this_x as u32
+                };
+                if (this_y as u32) < min_y {
+                    min_y = this_y as u32
+                };
+                if (this_y as u32) > max_y {
+                    max_y = this_y as u32
+                };
+            }
+        }
+        if min_x >= 10 {
+            min_x -= 10
+        } else {
+            min_x = 0
+        };
+        if max_x <= MODEL_WIDTH.try_into().expect("Too big") {
+            max_x += 10
+        } else {
+            max_x = MODEL_WIDTH.try_into().expect("Too big")
+        };
+        if min_y >= 10 {
+            min_y -= 10
+        } else {
+            min_x = 0
+        };
+        if max_y <= MODEL_HEIGHT.try_into().expect("Too big") {
+            max_y += 10
+        } else {
+            max_y = MODEL_HEIGHT.try_into().expect("Too big")
+        };
+        (
+            min_x,
+            min_y,
+            (max_x - min_x).try_into().expect("Too big"),
+            (max_y - min_y).try_into().expect("Too big"),
+        )
+    }
+    /// paint() exports a PNG image of the current model using the macroquad export_png() function
+    pub fn paint(&self, tlx: u32, tly: u32, x_width: u16, y_height: u16) {
+        let mut sand_painting = Image::gen_image_color(x_width, y_height, BLANK);
+        for row in 0..y_height as usize - 1 {
+            for column in 0..x_width as usize - 1 {
+                let idx = self.xy_to_idx(column + tlx as usize, row + tly as usize);
+                match self.cells[idx].grains {
                     0 => {
-                        if self.cells[(row * self.width) + column].grains == 0
-                            && self.cells[(row * self.width) + column].collapses == 0
-                        {
+                        if self.cells[idx].grains == 0 && self.cells[idx].collapses == 0 {
                             sand_painting.set_pixel(column as u32, row as u32, self.hues.untouched);
                         } else {
                             sand_painting.set_pixel(
@@ -284,7 +334,7 @@ impl Model {
             }
         }
         // format name & export as PNG
-        let fname = format!("Lakhesis_{:07}.png", &self.total_grains);
+        let fname = format!("Lakhesis_{:08}.png", &self.total_grains);
         sand_painting.export_png(&fname);
     }
 }
