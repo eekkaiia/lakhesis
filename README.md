@@ -1,7 +1,7 @@
 Lakhesis
 ========
 
-Klotho spins the thread of life, Lakhesis measures it, Atropos cuts it short. [Wikipedia][1]
+Klotho spins the thread of life, Lakhesis measures it, Atropos cuts it short. [Moirai][1]
 
 ![Lakhesis single sandpile](/images/Lakhesis_0949847.png)
 
@@ -14,12 +14,14 @@ Description
 
 During experimentation with the model it was noted that adding a second sand pile resulted in interesting, and recurring, patterns at the boundary between the two piles. Lakhesis has been set up in order to explore how these boundary patterns develop and how factors such as the number of additional piles and their orientation and distance from each other affect these patterns. The lattice is set to 2,700 by 2,700 pixels, large enough to contain a single sandpile of approximately 20 million sand grains. Cells with three grains are set to transperant black in order to emphasis the patterns that cross through these stable areas. Many of these patterns have the appearance of threads intertwining and weaving into textile-like surfaces (i.e. the name of the crate - apologies for the mixed metaphors).
 
-![Lakhesis threads](/images/LakhesisThread.GIF)
+![Lakhesis threads](/images/LakhesisThread.GIF)    [Take a look at the web version][7]
 
 Keywords
 --------
 
 [Abelian sandpile model][2], [Cellular automaton][3], [Self-organized criticality][4], [Rust][5], [Macroquad][6]
+
+[Take a look at a browser-based version][7]
 
 Requirements
 ------------
@@ -84,3 +86,4 @@ The content of this repository is licensed under [Apache License 2.0](https://ww
 [4]: https://en.wikipedia.org/wiki/Self-organized_criticality
 [5]: https://www.rust-lang.org
 [6]: https://macroquad.rs
+[7]: https://eekkaiia.github.io/lakhesis
