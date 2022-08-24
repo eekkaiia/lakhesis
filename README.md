@@ -1,7 +1,7 @@
 Lakhesis
 ========
 
-Klotho spins the thread of life, Lakhesis measures it, Atropos cuts it short. [Moirai][1]
+Klotho spins the thread of life, Lakhesis measures it, Atropos cuts it short. [the Moirai][1]
 
 ![Lakhesis single sandpile](/images/Lakhesis_0949847.png)
 
@@ -20,8 +20,6 @@ Keywords
 --------
 
 [Abelian sandpile model][2], [Cellular automaton][3], [Self-organized criticality][4], [Rust][5], [Macroquad][6]
-
-[Take a look at a browser-based version][7]
 
 Requirements
 ------------
@@ -69,11 +67,13 @@ basic-http-server
 Comments
 --------
 
-When the simulation starts a light gray dot indicates the centerpoint of the 2,700 by 2,700 lattice so that a new sandpile can be started in the middle of the lattice. The point is just a guide - new sandpiles can be started anywhere within the lattice. If the model is run with only one sandpile, it will generate the standard Abelian image seen at the top of this page. Adding additional sandpiles will generate images similar to the second image above. Pressing [C]olor randomly changes the colors used the by model. Generating new colors doesn't impact any other aspect of the model and they can be repeatedly changed, however the old colors are not saved. Adding a color palette could be a future update.
+When the simulation starts a light gray dot indicates the centerpoint of the 2,700 by 2,700 lattice so that a new sandpile can be started in the middle of the lattice. The point is just a guide - new sandpiles can be started anywhere within the lattice. If the model is run with only one sandpile, it will generate the standard Abelian image seen at the top of this page. Adding additional sandpiles will generate images similar to the second image above. Pressing [C]olor randomly changes the colors used the by model. Generating new colors doesn't impact any other aspect of the model and they can be repeatedly changed, however values of the old colors are not saved. Adding a color palette could be a future update.
 
 A control panel in the `lakhesis` window provides a map of keyboard commands and information on the model. To keep the labels short the description for the up and down arrow keys are a little misleading. When Lakhesis starts it defaults to refreshing the screen every 1024 interations (an interval of 1024 sand grains that have been added to the model). The display interval can be changed by a factor of 4 down to a minumum of 1 (refreshing the screen for each sand grain added) and up to a maximum of 16,384. Initially, more frequent screen updates slow down overall progress of the model, however the interesting patterns mentioned above are more apparent at smaller intervals. Conversely, increasing the interval between updates can 'speed' up the model to get to the point where the edges of sandpiles interact, at which point the interval can be decreased to observe the interference patterns. As the number of sand grains becomes substantial the simulation will become less responsive as more time is needed to evaluate the model. At this point the time needed to refresh the screen is inconsequential compared to the evaluation time and the interval should be reduced to make the model more responsive to keyboard commands. When frames per second (FPS) drops to 0, the "Last frame time" and "Longest frame time" variables can help estimate how long it will be till the next screen update.
 
 There are two undocumented features. The background color can toggled between black (default) and white by pressing the [B] key. Pressing [CTRL|V] will export a large number of PNG images at the set interval. [V] is for video, however the command doesn't actually create a video, rather it exports an image of the visible portion of the model at a constant interval. The number of images is set to 600 by a constant (VIDEO_FRAME_COUNT) in "main.rs". These 600 images could, for example, be animated with video editing software to produce a 10 second video at 60fps. WARNING - using the video command will dump 600 images in your project folder. Pressing [ESC] will cancel the command. The [S]napshot command works a little differently - it exports a PNG image of the active portion of the lattice with a 10-pixel blank boundary around the edges - even if whole image is not visible on the screen. The boundary and the 'black' triangular areas in the image are actually transparent and can be easily manipulated with image editing software.
+
+My contact info is in the "cargo.toml" file.
 
 License
 -------
