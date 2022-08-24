@@ -1,7 +1,7 @@
 Lakhesis
 ========
 
-Klotho spins the thread of life, Lakhesis measures it, Atropos cuts it short. [the Moirai][1]
+Klotho spins the thread of life, Lakhesis measures it, Atropos cuts it short - the [Moirai][1]
 
 ![Lakhesis single sandpile](/images/Lakhesis_0949847.png)
 
@@ -35,7 +35,7 @@ Usage
 -----
 
 ```bash
-cargo run -- release
+cargo run --release
 ```
 
 There are no command line arguments.
