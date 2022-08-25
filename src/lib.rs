@@ -1,51 +1,47 @@
-use rand::prelude::*;
-
-// RGBA values for some colors
-const RED: [u8; 4] = [255, 0, 0, 255];
-const GREEN: [u8; 4] = [0, 255, 0, 255];
-const BLUE: [u8; 4] = [0, 0, 255, 255];
-const YELLOW: [u8; 4] = [255, 255, 0, 255];
-const BLACK: [u8; 4] = [0, 0, 0, 255];
-// const BLACK_TRANSPARENT: [u8; 4] = [0, 0, 0, 0];
-// const WHITE: [u8; 4] = [255, 255, 255, 255];
-const GREY: [u8; 4] = [128, 128, 128, 255];
-// const ORANGE: [u8; 4] = [255, 165, 0, 255];
-// const PURPLE: [u8; 4] = [191, 64, 191, 255];
+use macroquad::prelude::Color;
+use macroquad::prelude::BLANK;
+use macroquad::rand::gen_range;
+use macroquad::rand::srand;
+use macroquad::texture::Image;
 
 // number of grains to initiate a 'collapse' of the sandpile
 const CRITICAL: u8 = 4;
 // default width of table
-const TABLE_WIDTH: usize = 1280;
-// default height of table
-const TABLE_HEIGHT: usize = 720;
-// default buffer at edge of table free of drop_cells
-const TABLE_BUFFER: usize = 250;
-// number of iterations before simulation resets
-pub const ITERATIONS: usize = 2_000_000;
+pub const MODEL_WIDTH: usize = 2_700; // 2_700 x 2_700 grid should contain a single 17M-grain sandpile
+                                      // default height of table
+pub const MODEL_HEIGHT: usize = 2_700; // this would = 7_290_000 cells
+                                       // number of iterations before simulation resets
+pub const MAX_ITERATIONS: usize = 16_777_216;
 // maximum number of drop cells
-pub const MAX_DROPS: usize = 12;
+pub const MAX_DROPS: usize = 32;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Hues {
-    pub untouched: [u8; 4],
-    pub zero_grains: [u8; 4],
-    pub one_grain: [u8; 4],
-    pub two_grains: [u8; 4],
-    pub three_grains: [u8; 4],
-    pub four_grains: [u8; 4],       // not needed when collapse occurs at four grains
-                                    // left in for variation where collapse occurs at five grains
+    pub untouched: Color,
+    pub zero_grains: Color,
+    pub one_grain: Color,
+    pub two_grains: Color,
+    pub three_grains: Color,
+    pub four_grains: Color, // not needed when collapse occurs at four grains
+                            // left in for variation where collapse occurs at five grains
 }
 
 impl Hues {
     fn default() -> Self {
+        let untouched: Color = Color::new(0.00, 0.00, 0.00, 0.00);
+        let zero_grains: Color = Color::new(0.00, 0.47, 0.95, 1.00);
+        let one_grain: Color = Color::new(0.00, 0.89, 0.19, 1.00);
+        let two_grains: Color = Color::new(0.99, 0.98, 0.00, 1.00);
+        let three_grains: Color = Color::new(0.00, 0.00, 0.00, 0.00);
+        let four_grains: Color = Color::new(0.90, 0.16, 0.22, 1.00);
         Self {
-            untouched: BLACK,
-            zero_grains: BLUE,
-            one_grain: YELLOW,
-            two_grains: GREEN,
-            three_grains: BLACK,    // stable three grain piles make up the large triangular areas
-                                    // set to black to highlight 'threads' of 0, 1, and 2 grain cells
-            four_grains: RED,
+            untouched,    // BLANK
+            zero_grains,  // BLUE
+            one_grain,    // GREEN
+            two_grains,   // YELLOW
+            three_grains, // BLANK stable three grain piles make up the large triangular areas
+            // set to blank to highlight 'threads' of 0, 1, and 2 grain cells
+            four_grains, // RED for version where collapse occurs at five grains
         }
     }
 }
@@ -53,10 +49,10 @@ impl Hues {
 #[derive(Clone, Copy, Debug, Default)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
 pub struct Cell {
-    pub grains: u8,                 // number of sand grains in cell
-    pub collapses: u8,              // number of times cell has collapsed
-                                    // > 255 recorded as 255
-                                    // grains == 0 && collapses == 0 is an untouched cell
+    pub grains: u8, // number of sand grains in cell
+    pub collapses: u8, // number of times cell has collapsed
+                    // > 255 recorded as 255
+                    // grains == 0 && collapses == 0 is an untouched cell
 }
 
 impl Cell {
@@ -69,113 +65,91 @@ impl Cell {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct Table {
-    pub cells: Vec<Cell>,           // 1D vec of cells indexed by total width * y + x
-    pub width: usize,               // width of 'table' that sand falls on
-    pub height: usize,              // height of 'table' that sand falls on - not using "length" 2b compatible with screen terminology
-    pub total_grains: usize,        // current quantity of sand grains that have fallen on 'table'
-    pub lost_grains: usize,         // current quantity of sand grains that have fallen off 'table'
+pub struct Model {
+    pub cells: Vec<Cell>,    // 1D vec of cells indexed by total width * y + x
+    pub width: usize,        // width of 'table' that sand falls on
+    pub height: usize, // height of 'table' that sand falls on - not using "length" 2b compatible with screen terminology
+    pub total_grains: usize, // current quantity of sand grains that have fallen on 'table'
+    pub lost_grains: usize, // current quantity of sand grains that have fallen off 'table'
+    pub drop_cells: [usize; MAX_DROPS],
+    pub active_cells: usize,
+    pub hues: Hues,
+    pub interval: usize,
+    pub avalanche: usize, // for future implementation
 }
 
-impl Table {
+impl Model {
     pub fn default() -> Self {
-        let table_width: usize = TABLE_WIDTH;
-        let table_height: usize = TABLE_HEIGHT;
-        let size = table_width.checked_mul(table_height).expect("Table too big");
+        let size = MODEL_WIDTH
+            .checked_mul(MODEL_HEIGHT)
+            .expect("Table too big");
+        let drop_cells: [usize; MAX_DROPS] = [0; MAX_DROPS];
         Self {
             cells: vec![Cell::default(); size],
-            width: table_width,
-            height: table_height,
+            width: MODEL_WIDTH,
+            height: MODEL_HEIGHT,
             total_grains: 0,
             lost_grains: 0,
+            drop_cells,
+            active_cells: 0,
+            hues: Hues::default(),
+            interval: 1_024,
+            avalanche: 0,
         }
     }
+    /// calc_center_idx() returns the index of the center cell
     pub fn calc_center_idx(&self) -> usize {
         let size = self.width.checked_mul(self.height).expect("Table too big");
         let center_idx: usize = {
-        if self.height % 2 == 0 {
-            if self.width % 2 == 0 {
-                (size / 2) + (self.width / 2)
+            if self.height % 2 == 0 {
+                if self.width % 2 == 0 {
+                    (size / 2) + (self.width / 2)
+                } else {
+                    (size / 2) + ((self.width - 1) / 2)
+                }
             } else {
-                (size / 2) + ((self.width - 1) / 2)
+                (size - 1) / 2
             }
-        } else {
-            (size - 1) / 2
-        }
         };
         center_idx
     }
+    /// calc_center_xy() returns the (x, y) coordinates of the center cell
     pub fn calc_center_xy(&self) -> (usize, usize) {
         let temp: usize = self.calc_center_idx();
         self.idx_to_xy(temp)
     }
+    /// xy_to_idx() converts cell (x, y) coordinates into vector index
     pub fn xy_to_idx(&self, x: usize, y: usize) -> usize {
         (y * self.width) + x
     }
+    /// idx_to_xy() converts cell vector index into (x, y) coordinates
     pub fn idx_to_xy(&self, idx: usize) -> (usize, usize) {
         let y = (idx as f64 / self.width as f64).trunc() as usize;
         let x = idx % self.width;
         (x, y)
     }
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct Model {
-    pub table: Table,
-    pub drop_cells: [usize; MAX_DROPS],
-    pub drop_times: [usize; MAX_DROPS],
-    pub active_cells: usize,
-    pub hues: Hues,
-    pub interval: usize,
-    pub random: bool,
-    pub avalanche: usize,       // for future implementation
-}
-
-impl Model {
-    pub fn default() -> Self {
-        // first grain drops at time = 0, the remaining MAX_DROPS possible new locations and times are randomly assigned
-        let mut rng = rand::thread_rng();
-        let mut drop_cells: [usize; MAX_DROPS]  = [0; MAX_DROPS];
-        for i in 0..MAX_DROPS {
-            let x: usize = rng.gen_range(TABLE_BUFFER..(TABLE_WIDTH - TABLE_BUFFER));
-            let y: usize = rng.gen_range(TABLE_BUFFER..(TABLE_HEIGHT - TABLE_BUFFER));
-            drop_cells[i] = (y * TABLE_WIDTH) + x;
-        }
-        let mut drop_times: [usize; MAX_DROPS]  = [0; MAX_DROPS];
-        for i in 1..MAX_DROPS {
-            drop_times[i] = rng.gen_range(0..ITERATIONS);
-        }
-        Self {
-            table: Table::default(),
-            drop_cells,
-            drop_times,
-            active_cells: 1,
-            hues: Hues::default(),
-            interval: 1000,
-            random: true,
-            avalanche: 0,
-        }
-    }
     /// add_grain() drops one grain of sand on the designated cell and checks if it collapsed
     pub fn add_grain(&mut self, ac: usize) {
-        self.table.total_grains += 1;
+        self.total_grains += 1;
         self.avalanche = 0;
-        self.table.cells[self.drop_cells[ac]].grains += 1;
-        if  self.table.cells[self.drop_cells[ac]].grains >= CRITICAL {
+        self.cells[self.drop_cells[ac]].grains += 1;
+        if self.cells[self.drop_cells[ac]].grains >= CRITICAL {
             self.unstable(self.drop_cells[ac]);
         }
     }
-    // a previous version of unstable recursively called itself and evaluated adj cells internally
+    // a previous version of unstable() recursively called itself and evaluated adj cells internally
     // this resulted in a stack overflow around 5M sand grains
-    // a second version added a fn for each direction that then called unstable
+    // a second version added a fn for each direction that then called unstable()
     // the second version resulted in a stack overflow around 10M sand grains
     // this version evaluates the second iteration in each adjacent cell and recursively calls the adjacent functions
     // this third version seems to overflow at ~20M grains - convert to iterative function?
     /// unstable() evaluates cell collapse for drop cell and calls a similar fn for each adjacent cell
-    fn unstable (&mut self, idx: usize) {
+    fn unstable(&mut self, idx: usize) {
         self.avalanche += 1;
-        self.table.cells[idx].grains -= CRITICAL;
-        if self.table.cells[idx].collapses < 255 { self.table.cells[idx].collapses += 1; };
+        self.cells[idx].grains -= CRITICAL;
+        if self.cells[idx].collapses < 255 {
+            self.cells[idx].collapses += 1;
+        };
         self.minusy(idx);
         self.plusy(idx);
         self.minusx(idx);
@@ -183,15 +157,17 @@ impl Model {
     }
     /// minusy() evaluates the cell above
     fn minusy(&mut self, idx: usize) {
-        if idx as i32 - (self.table.width as i32) < 0 {
-            self.table.lost_grains += 1;
+        if idx as i32 - (self.width as i32) < 0 {
+            self.lost_grains += 1;
         } else {
-            let nidx = idx - self.table.width;
-            self.table.cells[nidx].grains += 1;
-            if self.table.cells[nidx].grains == CRITICAL {
+            let nidx = idx - self.width;
+            self.cells[nidx].grains += 1;
+            if self.cells[nidx].grains == CRITICAL {
                 self.avalanche += 1;
-                self.table.cells[nidx].grains -= CRITICAL;
-                if self.table.cells[nidx].collapses < 255 { self.table.cells[nidx].collapses += 1; };
+                self.cells[nidx].grains -= CRITICAL;
+                if self.cells[nidx].collapses < 255 {
+                    self.cells[nidx].collapses += 1;
+                };
                 self.minusy(nidx);
                 self.plusy(nidx);
                 self.minusx(nidx);
@@ -201,15 +177,17 @@ impl Model {
     }
     /// plusy() evaluates the cell below
     fn plusy(&mut self, idx: usize) {
-        if idx + self.table.width >= self.table.width * self.table.height {
-            self.table.lost_grains += 1;
+        if idx + self.width >= self.width * self.height {
+            self.lost_grains += 1;
         } else {
-            let nidx = idx + self.table.width;
-            self.table.cells[nidx].grains += 1;
-            if self.table.cells[nidx].grains == CRITICAL {
+            let nidx = idx + self.width;
+            self.cells[nidx].grains += 1;
+            if self.cells[nidx].grains == CRITICAL {
                 self.avalanche += 1;
-                self.table.cells[nidx].grains -= CRITICAL;
-                if self.table.cells[nidx].collapses < 255 { self.table.cells[nidx].collapses += 1; };
+                self.cells[nidx].grains -= CRITICAL;
+                if self.cells[nidx].collapses < 255 {
+                    self.cells[nidx].collapses += 1;
+                };
                 self.minusy(nidx);
                 self.plusy(nidx);
                 self.minusx(nidx);
@@ -218,16 +196,18 @@ impl Model {
         }
     }
     /// minusx() evaluates the cell to the left
-    fn minusx (&mut self, idx: usize) {
-        if idx % self.table.width == 0 {
-            self.table.lost_grains += 1;
+    fn minusx(&mut self, idx: usize) {
+        if idx % self.width == 0 {
+            self.lost_grains += 1;
         } else {
             let nidx = idx - 1;
-            self.table.cells[nidx].grains += 1;
-            if self.table.cells[nidx].grains == CRITICAL {
+            self.cells[nidx].grains += 1;
+            if self.cells[nidx].grains == CRITICAL {
                 self.avalanche += 1;
-                self.table.cells[nidx].grains -= CRITICAL;
-                if self.table.cells[nidx].collapses < 255 { self.table.cells[nidx].collapses += 1; };
+                self.cells[nidx].grains -= CRITICAL;
+                if self.cells[nidx].collapses < 255 {
+                    self.cells[nidx].collapses += 1;
+                };
                 self.minusy(nidx);
                 self.plusy(nidx);
                 self.minusx(nidx);
@@ -236,16 +216,18 @@ impl Model {
         }
     }
     // plusx() evaluates the cell to the right
-    fn plusx (&mut self, idx: usize) {
-        if (idx + 1) % self.table.width == 0 {
-            self.table.lost_grains += 1;
+    fn plusx(&mut self, idx: usize) {
+        if (idx + 1) % self.width == 0 {
+            self.lost_grains += 1;
         } else {
             let nidx = idx + 1;
-            self.table.cells[nidx].grains += 1;
-            if self.table.cells[nidx].grains == CRITICAL {
+            self.cells[nidx].grains += 1;
+            if self.cells[nidx].grains == CRITICAL {
                 self.avalanche += 1;
-                self.table.cells[nidx].grains -= CRITICAL;
-                if self.table.cells[nidx].collapses < 255 { self.table.cells[nidx].collapses += 1; };
+                self.cells[nidx].grains -= CRITICAL;
+                if self.cells[nidx].collapses < 255 {
+                    self.cells[nidx].collapses += 1;
+                };
                 self.minusy(nidx);
                 self.plusy(nidx);
                 self.minusx(nidx);
@@ -253,94 +235,123 @@ impl Model {
             }
         }
     }
-    /// draw() updates the pixel frame with new RGBA colors
-    pub fn draw(&self, frame: &mut [u8]) {  
-        debug_assert_eq!(frame.len(), 4 * self.table.cells.len());
-        for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
-            match self.table.cells[i].grains {
-                0 => {
-                    if self.table.cells[i].collapses == 0 {
-                        if  // edge of table
-                            !(TABLE_WIDTH..=(TABLE_WIDTH * TABLE_HEIGHT - TABLE_WIDTH)).contains(&i) ||
-                            i % TABLE_WIDTH == 0 ||
-                            (i + 1) % TABLE_WIDTH == 0 ||
-                            // four corners of buffer
-                            i == self.table.xy_to_idx(TABLE_BUFFER, TABLE_BUFFER) ||
-                            i == self.table.xy_to_idx(TABLE_WIDTH - TABLE_BUFFER, TABLE_BUFFER) ||
-                            i == self.table.xy_to_idx(TABLE_BUFFER, TABLE_HEIGHT - TABLE_BUFFER) ||
-                            i == self.table.xy_to_idx(TABLE_WIDTH - TABLE_BUFFER, TABLE_HEIGHT - TABLE_BUFFER)
-                        {
-                                pixel.copy_from_slice(&GREY);
-                        } else { pixel.copy_from_slice(&self.hues.untouched); }
-                    } else { pixel.copy_from_slice(&self.hues.zero_grains); }
-                },
-                1 => pixel.copy_from_slice(&self.hues.one_grain),
-                2 => pixel.copy_from_slice(&self.hues.two_grains),
-                3 => pixel.copy_from_slice(&self.hues.three_grains),
-                _ => pixel.copy_from_slice(&self.hues.four_grains),
-            };
-        }
+    /// random_colors() generates random RGBA values for 'Hues' using macroquads quad_rand crate
+    pub fn random_colors(&mut self) {
+        srand(self.total_grains as u64);
+        self.hues.zero_grains = Color::new(
+            gen_range::<f32>(0.0, 1.0),
+            gen_range::<f32>(0.0, 1.0),
+            gen_range::<f32>(0.0, 1.0),
+            1.0,
+        );
+        self.hues.one_grain = Color::new(
+            gen_range::<f32>(0.0, 1.0),
+            gen_range::<f32>(0.0, 1.0),
+            gen_range::<f32>(0.0, 1.0),
+            1.0,
+        );
+        self.hues.two_grains = Color::new(
+            gen_range::<f32>(0.0, 1.0),
+            gen_range::<f32>(0.0, 1.0),
+            gen_range::<f32>(0.0, 1.0),
+            1.0,
+        );
     }
-    /// paint() exports a PNG image of the current frame
-    pub fn paint(&self) {
-        let mut grains_img = image::RgbaImage::new(self.table.width as u32, self.table.height as u32);
-        for row in 0..self.table.height - 1 {
-            for column in 0..self.table.width - 1 {
-                match self.table.cells[(row * self.table.width) + column].grains {
+    /// find_extent() returns the minimum x, minimum y, width, and height of the active area of the model
+    // returned tuple matches arguments for paint()
+    pub fn find_extent(&self) -> (u32, u32, u16, u16) {
+        let mut min_x: u32 = MODEL_WIDTH.try_into().expect("Too big");
+        let mut max_x: u32 = 0;
+        let mut min_y: u32 = MODEL_HEIGHT.try_into().expect("Too big");
+        let mut max_y: u32 = 0;
+        for i in 0..self.cells.len() {
+            if self.cells[i].grains > 0 || self.cells[i].collapses > 0 {
+                let (this_x, this_y) = self.idx_to_xy(i);
+                if (this_x as u32) < min_x {
+                    min_x = this_x as u32
+                };
+                if (this_x as u32) > max_x {
+                    max_x = this_x as u32
+                };
+                if (this_y as u32) < min_y {
+                    min_y = this_y as u32
+                };
+                if (this_y as u32) > max_y {
+                    max_y = this_y as u32
+                };
+            }
+        }
+        if min_x >= 10 {
+            min_x -= 10
+        } else {
+            min_x = 0
+        };
+        if max_x <= MODEL_WIDTH.try_into().expect("Too big") {
+            max_x += 10
+        } else {
+            max_x = MODEL_WIDTH.try_into().expect("Too big")
+        };
+        if min_y >= 10 {
+            min_y -= 10
+        } else {
+            min_x = 0
+        };
+        if max_y <= MODEL_HEIGHT.try_into().expect("Too big") {
+            max_y += 10
+        } else {
+            max_y = MODEL_HEIGHT.try_into().expect("Too big")
+        };
+        (
+            min_x,
+            min_y,
+            (max_x - min_x).try_into().expect("Too big"),
+            (max_y - min_y).try_into().expect("Too big"),
+        )
+    }
+    /// paint() exports a PNG image of the current model using the macroquad export_png() function
+    pub fn paint(&self, tlx: u32, tly: u32, x_width: u16, y_height: u16) {
+        let mut sand_painting = Image::gen_image_color(x_width, y_height, BLANK);
+        for row in 0..y_height as usize - 1 {
+            for column in 0..x_width as usize - 1 {
+                let idx = self.xy_to_idx(column + tlx as usize, row + tly as usize);
+                match self.cells[idx].grains {
                     0 => {
-                        if self.table.cells[(row * self.table.width) + column].grains == 0
-                            && self.table.cells[(row * self.table.width) + column].collapses == 0 {
-                            grains_img.put_pixel(column as u32, row as u32, image::Rgba(self.hues.untouched));
+                        if self.cells[idx].grains == 0 && self.cells[idx].collapses == 0 {
+                            sand_painting.set_pixel(column as u32, row as u32, self.hues.untouched);
                         } else {
-                            grains_img.put_pixel(column as u32, row as u32, image::Rgba(self.hues.zero_grains));
+                            sand_painting.set_pixel(
+                                column as u32,
+                                row as u32,
+                                self.hues.zero_grains,
+                            );
                         }
-                    },
-                    1 => grains_img.put_pixel(column as u32, row as u32, image::Rgba(self.hues.one_grain)),
-                    2 => grains_img.put_pixel(column as u32, row as u32, image::Rgba(self.hues.two_grains)),
-                    3 => grains_img.put_pixel(column as u32, row as u32, image::Rgba(self.hues.three_grains)),
-                    _ => grains_img.put_pixel(column as u32, row as u32, image::Rgba(self.hues.four_grains)),
+                    }
+                    1 => sand_painting.set_pixel(column as u32, row as u32, self.hues.one_grain),
+                    2 => sand_painting.set_pixel(column as u32, row as u32, self.hues.two_grains),
+                    3 => sand_painting.set_pixel(column as u32, row as u32, self.hues.three_grains),
+                    _ => sand_painting.set_pixel(column as u32, row as u32, self.hues.four_grains),
                 }
             }
         }
-        // format name
-        let fname = format!("Lakhesis_{:07}", &self.table.total_grains);
-        // export PNG image
-        let fname_png = format!("{}.png", &fname);
-        grains_img.save_with_format(&fname_png, image::ImageFormat::Png).unwrap();
-    }
-    /// random_colors() generates random RGBA values for 'Hues'
-    pub fn random_colors(&mut self) {
-        let mut rng = rand::thread_rng();
-        self.hues.zero_grains = [
-            rng.gen_range(0..=255),
-            rng.gen_range(0..=255),
-            rng.gen_range(0..=255),
-            255];
-        self.hues.one_grain = [
-            rng.gen_range(0..=255),
-            rng.gen_range(0..=255),
-            rng.gen_range(0..=255),
-            255];
-        self.hues.two_grains = [
-            rng.gen_range(0..=255),
-            rng.gen_range(0..=255),
-            rng.gen_range(0..=255),
-            255];
+        // format name & export as PNG
+        let fname = format!("Lakhesis_{:08}.png", &self.total_grains);
+        sand_painting.export_png(&fname);
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn conversions() {
-        let table = Table::default();
+        let model = Model::default();
         let idx: usize = 256_001;
         let x: usize = 1;
         let y: usize = 200;
-        assert_eq!(table.xy_to_idx(x, y), 256_001);
-        assert_eq!(table.idx_to_xy(idx),(1, 200));
-        assert_eq!(table.calc_center_idx(), 461_440);
-        assert_eq!(table.calc_center_xy(), (640 , 360));
+        assert_eq!(model.xy_to_idx(x, y), 256_001);
+        assert_eq!(model.idx_to_xy(idx), (1, 200));
+        assert_eq!(model.calc_center_idx(), 461_440);
+        assert_eq!(model.calc_center_xy(), (640, 360));
     }
 }
