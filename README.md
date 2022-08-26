@@ -72,7 +72,7 @@ The blue "Info" box in the `lakhesis` window provides a map of keyboard commands
 
 There are two undocumented features. The background color can toggle between black (default) and white by pressing the [B] key. Pressing [CTRL-V] will export a large number of PNG images at the set interval. [V] stands for video, however the command doesn't actually create a video, rather it exports an image of the visible portion of the model at a constant interval. The number of images is set to 600 by the constant VIDEO_FRAME_COUNT in "main.rs". These 600 images could, for example, be animated with video editing software to produce a 10 second video at 60fps. WARNING - using the video command will dump 600 images in your project folder. Pressing [ESC] will cancel the command. The [S]napshot command works a little differently - it exports a PNG image of the active portion of the lattice with a 10-pixel blank boundary around the edges - even if the whole image is not visible on the screen. The boundary and the 'black' triangular areas in the image are actually transparent and can be easily manipulated with image editing software.
 
-`lakhesis` build is failing on `github` with error "cannot find lasound", but does build on my `ubuntu` 22.04 setup after installing:
+`lakhesis` build is failing on `github` with error "/usr/bin/ld: cannot find -lasound", but does build on my `ubuntu` 22.04 setup after installing:
 
 ```sh
 # ubuntu system dependencies
