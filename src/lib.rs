@@ -260,24 +260,22 @@ impl Model {
     /// find_extent() returns the minimum x, minimum y, width, and height of the active area of the model
     // returned tuple matches arguments for paint()
     pub fn find_extent(&self) -> (u32, u32, u16, u16) {
-        let mut min_x: u32 = MODEL_WIDTH.try_into().expect("Too big");
-        let mut max_x: u32 = 0;
-        let mut min_y: u32 = MODEL_HEIGHT.try_into().expect("Too big");
-        let mut max_y: u32 = 0;
+        let (mut min_x, mut min_y) = self.calc_center_xy();
+        let (mut max_x, mut max_y) = self.calc_center_xy();
         for i in 0..self.cells.len() {
-            if self.cells[i].grains > 0 || self.cells[i].collapses > 0 {
+            if self.cells[i].grains != 0 && self.cells[i].collapses != 0 {
                 let (this_x, this_y) = self.idx_to_xy(i);
-                if (this_x as u32) < min_x {
-                    min_x = this_x as u32
+                if this_x < min_x {
+                    min_x = this_x;
                 };
-                if (this_x as u32) > max_x {
-                    max_x = this_x as u32
+                if this_x > max_x {
+                    max_x = this_x;
                 };
-                if (this_y as u32) < min_y {
-                    min_y = this_y as u32
+                if this_y < min_y {
+                    min_y = this_y;
                 };
-                if (this_y as u32) > max_y {
-                    max_y = this_y as u32
+                if this_y > max_y {
+                    max_y = this_y;
                 };
             }
         }
@@ -286,24 +284,24 @@ impl Model {
         } else {
             min_x = 0
         };
-        if max_x <= MODEL_WIDTH.try_into().expect("Too big") {
-            max_x += 10
+        if max_x <= MODEL_WIDTH - 10 {
+            max_x += 10;
         } else {
-            max_x = MODEL_WIDTH.try_into().expect("Too big")
+            max_x = MODEL_WIDTH;
         };
         if min_y >= 10 {
-            min_y -= 10
+            min_y -= 10;
         } else {
-            min_x = 0
+            min_y = 0;
         };
-        if max_y <= MODEL_HEIGHT.try_into().expect("Too big") {
-            max_y += 10
+        if max_y <= MODEL_HEIGHT - 10 {
+            max_y += 10;
         } else {
-            max_y = MODEL_HEIGHT.try_into().expect("Too big")
+            max_y = MODEL_HEIGHT;
         };
         (
-            min_x,
-            min_y,
+            min_x.try_into().expect("Too big"),
+            min_y.try_into().expect("Too big"),
             (max_x - min_x).try_into().expect("Too big"),
             (max_y - min_y).try_into().expect("Too big"),
         )
