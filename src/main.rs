@@ -80,42 +80,52 @@ impl Screen {
     /// draw() maps visible portion of model to screen
     pub fn draw(&self, model: &Model) {
         // redrawing entire screen reduces fps - use libraries find_extent() to only update active part of model
+        let mut render: bool = true;
         let mut xstart: usize = 0;
         let mut xstop: usize = self.width.trunc() as usize;
         let mut ystart: usize = 0;
         let mut ystop: usize = self.height.trunc() as usize;
         let (left, top, left_plus, top_plus) = model.find_extent();
-        if left > self.tlx.trunc() as u32 {
-            xstart = (left - self.tlx.trunc() as u32) as usize
-        };
-        if (left + left_plus as u32) < (self.tlx + self.width).trunc() as u32 {
-            xstop = ((left + left_plus as u32) - self.tlx.trunc() as u32) as usize
-        };
-        if top > self.tly.trunc() as u32 {
-            ystart = (top - self.tly.trunc() as u32) as usize
-        };
-        if (top + top_plus as u32) < (self.tly + self.height).trunc() as u32 {
-            ystop = ((top + top_plus as u32) - self.tly.trunc() as u32) as usize
-        };
+        if (left + left_plus as u32) < self.tlx.trunc() as u32
+            || left > (self.tlx + self.width).trunc() as u32
+            || (top + top_plus as u32) < self.tly.trunc() as u32
+            || top > (self.tly + self.height).trunc() as u32
+        {
+            render = false;
+        }
+        if render {
+            if left > self.tlx.trunc() as u32 {
+                xstart = (left - self.tlx.trunc() as u32) as usize
+            };
+            if (left + left_plus as u32) < (self.tlx + self.width).trunc() as u32 {
+                xstop = ((left + left_plus as u32) - self.tlx.trunc() as u32) as usize
+            };
+            if top > self.tly.trunc() as u32 {
+                ystart = (top - self.tly.trunc() as u32) as usize
+            };
+            if (top + top_plus as u32) < (self.tly + self.height).trunc() as u32 {
+                ystop = ((top + top_plus as u32) - self.tly.trunc() as u32) as usize
+            };
 
-        for i in ystart..ystop {
-            for j in xstart..xstop {
-                let idx =
-                    model.xy_to_idx(j + self.tlx.trunc() as usize, i + self.tly.trunc() as usize);
-                let mut pixel_color: Color = BLANK;
-                match model.cells[idx].grains {
-                    0 => {
-                        if model.cells[i].collapses != 0 {
-                            // untouched pixels are left transparent black
-                            pixel_color = model.hues.zero_grains;
+            for i in ystart..ystop {
+                for j in xstart..xstop {
+                    let idx = model
+                        .xy_to_idx(j + self.tlx.trunc() as usize, i + self.tly.trunc() as usize);
+                    let mut pixel_color: Color = BLANK;
+                    match model.cells[idx].grains {
+                        0 => {
+                            if model.cells[i].collapses != 0 {
+                                // untouched pixels are left transparent black
+                                pixel_color = model.hues.zero_grains;
+                            }
                         }
-                    }
-                    1 => pixel_color = model.hues.one_grain,
-                    2 => pixel_color = model.hues.two_grains,
-                    3 => pixel_color = model.hues.three_grains,
-                    _ => pixel_color = model.hues.four_grains,
-                };
-                draw_rectangle(j as f32, i as f32, 1.0, 1.0, pixel_color);
+                        1 => pixel_color = model.hues.one_grain,
+                        2 => pixel_color = model.hues.two_grains,
+                        3 => pixel_color = model.hues.three_grains,
+                        _ => pixel_color = model.hues.four_grains,
+                    };
+                    draw_rectangle(j as f32, i as f32, 1.0, 1.0, pixel_color);
+                }
             }
         }
     }
@@ -124,10 +134,10 @@ impl Screen {
         let top_left_x = (self.mx - 16.0).trunc() as usize;
         let top_left_y = (self.my - 16.0).trunc() as usize;
         let mut bg: Color = BLACK;
-		let mut curs: Color = WHITE;
+        let mut curs: Color = WHITE;
         if !self.background {
             bg = WHITE;
-			curs = BLACK;
+            curs = BLACK;
         };
         for i in 0..32 {
             for j in 0..32 {
@@ -286,10 +296,10 @@ async fn main() {
             && screen.my >= 0.0
             && screen.my < screen.height
         {
-			let mut curs: Color = WHITE;
-        	if !screen.background {
-            	curs = BLACK;
-        	};
+            let mut curs: Color = WHITE;
+            if !screen.background {
+                curs = BLACK;
+            };
             if screen.add {
                 draw_line(
                     screen.mx - 10.0,
@@ -435,15 +445,15 @@ async fn main() {
                 if screen.tlx < 0.0 {
                     screen.tlx = 0.0;
                 };
-                if (screen.tlx + screen.width) > MODEL_WIDTH as f32 {
-                    screen.tlx = MODEL_WIDTH as f32 - screen.width
+                if (screen.tlx + screen.width) >= MODEL_WIDTH as f32 {
+                    screen.tlx = MODEL_WIDTH as f32 - screen.width;
                 };
                 screen.tly += screen.my - (screen.height / 2.0).trunc();
                 if screen.tly < 0.0 {
-                    screen.tlx = 0.0;
+                    screen.tly = 0.0;
                 };
-                if (screen.tly + screen.height) > MODEL_HEIGHT as f32 {
-                    screen.tly = MODEL_HEIGHT as f32 - screen.height
+                if (screen.tly + screen.height) >= MODEL_HEIGHT as f32 {
+                    screen.tly = MODEL_HEIGHT as f32 - screen.height;
                 };
             }
         }
