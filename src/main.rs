@@ -63,7 +63,7 @@ impl Screen {
             increment: false,
             video: 0,
             ac: 0,
-            context: "To start the abelian sand model press the [A] key".to_string(),
+            context: "Start a simulation by pressing the [A] key to Add a new sandpile".to_string(),
             longest_ft: 0.0,
             past_ft,
             ft_idx: 0,
@@ -81,10 +81,6 @@ impl Screen {
     pub fn draw(&self, model: &Model) {
         // redrawing entire screen reduces fps - use libraries find_extent() to only update active part of model
         let mut render: bool = true;
-        let mut xstart: usize = 0;
-        let mut xstop: usize = self.width.trunc() as usize;
-        let mut ystart: usize = 0;
-        let mut ystop: usize = self.height.trunc() as usize;
         let (left, top, left_plus, top_plus) = model.find_extent();
         if (left + left_plus as u32) < self.tlx.trunc() as u32
             || left > (self.tlx + self.width).trunc() as u32
@@ -94,6 +90,10 @@ impl Screen {
             render = false;
         }
         if render {
+            let mut xstart: usize = 0;
+            let mut xstop: usize = self.width.trunc() as usize;
+            let mut ystart: usize = 0;
+            let mut ystop: usize = self.height.trunc() as usize;
             if left > self.tlx.trunc() as u32 {
                 xstart = (left - self.tlx.trunc() as u32) as usize
             };
@@ -114,7 +114,7 @@ impl Screen {
                     let mut pixel_color: Color = BLANK;
                     match model.cells[idx].grains {
                         0 => {
-                            if model.cells[i].collapses != 0 {
+                            if model.cells[i].borged {
                                 // untouched pixels are left transparent black
                                 pixel_color = model.hues.zero_grains;
                             }
@@ -148,7 +148,7 @@ impl Screen {
                 let mut pixel_color: Color = bg; // background color instead of BLANK so unmagnified image is blocked
                 match model.cells[idx].grains {
                     0 => {
-                        if model.cells[idx].collapses != 0 {
+                        if model.cells[idx].borged {
                             pixel_color = model.hues.zero_grains;
                         }
                     }
@@ -253,7 +253,7 @@ async fn main() {
         }
         // is control panel visible?
         if screen.info {
-            draw_rectangle(2.0, 2.0, 958.0, 75.0, DARKBLUE);
+            draw_rectangle(2.0, 2.0, 956.0, 75.0, DARKBLUE);
             let cross_x: usize = (screen.tlx + screen.mx).trunc() as usize;
             let cross_y: usize = (screen.tly + screen.my).trunc() as usize;
             let mut label1 = "[A]dd | [C]olors | [I]nfo | [P]ause/resume | [Spacebar]step | [Up]interval | [Down]interval | [M]agnify | [S]napshot | [CTRL][N]ew".to_string();
@@ -275,10 +275,10 @@ async fn main() {
 				&screen.get_average_ft(),
                 &screen.longest_ft,
             );
-            draw_text(&label1, 5.0, 15.0, 16.0, WHITE);
-            draw_text(&label2, 5.0, 33.0, 16.0, LIGHTGRAY);
-            draw_text(&label3, 5.0, 51.0, 16.0, LIGHTGRAY);
-            draw_text(&screen.context, 5.0, 69.0, 16.0, YELLOW);
+            draw_text(&label1, 8.0, 15.0, 16.0, WHITE);
+            draw_text(&label2, 8.0, 33.0, 16.0, LIGHTGRAY);
+            draw_text(&label3, 8.0, 51.0, 16.0, LIGHTGRAY);
+            draw_text(&screen.context, 8.0, 69.0, 16.0, YELLOW);
             if screen.paused {
                 draw_text("PAUSED", 868.0, 69.0, 16.0, ORANGE);
                 if model.total_grains >= MAX_ITERATIONS {
@@ -351,6 +351,27 @@ async fn main() {
             }
             Some(KeyCode::B) => screen.background = !screen.background, // toggle background between BLACK and WHITE
             Some(KeyCode::C) => model.random_colors(), // cause a random color change for sandpiles
+            Some(KeyCode::G) => {
+                if IO_SUPPORTED {
+                    model.curate();
+                } else {
+                    screen.context = "Exporting data to file not supported".to_string();
+                }
+            }
+            Some(KeyCode::H) => {
+                // new simulation - reset to default
+                if IO_SUPPORTED {
+                    if is_key_down(KeyCode::LeftControl) || is_key_down(KeyCode::RightControl) {
+                        model.uncurate("lakhesis.lak".to_string());
+                    } else {
+                        screen.context =
+                            "Press [CTRL][H] to load a saved simulation named 'lakhesis.lak' or [ESC] to cancel"
+                                .to_string();
+                    }
+                } else {
+                    screen.context = "Loading from a saved file is not supported".to_string();
+                }
+            }
             Some(KeyCode::I) => {
                 screen.info = !screen.info;
                 screen.context = "Press [I] to hide this information panel          Left click the mouse to recenter the image under the crosshair".to_string();

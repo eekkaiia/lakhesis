@@ -4,6 +4,10 @@ use macroquad::rand::gen_range;
 use macroquad::rand::srand;
 use macroquad::texture::Image;
 
+use std::fs::File;
+use std::io::{prelude::*, BufReader};
+use std::io::{LineWriter, Write};
+
 // number of grains to initiate a 'collapse' of the sandpile
 const CRITICAL: u8 = 4;
 // default width of table
@@ -49,17 +53,15 @@ impl Hues {
 #[derive(Clone, Copy, Debug, Default)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
 pub struct Cell {
-    pub grains: u8, // number of sand grains in cell
-    pub collapses: u8, // number of times cell has collapsed
-                    // > 255 recorded as 255
-                    // grains == 0 && collapses == 0 is an untouched cell
+    pub grains: u8,   // number of sand grains in cell
+    pub borged: bool, // has the cell become part of a sandpile
 }
 
 impl Cell {
     fn default() -> Self {
         Self {
             grains: 0,
-            collapses: 0,
+            borged: false,
         }
     }
 }
@@ -133,6 +135,7 @@ impl Model {
         self.total_grains += 1;
         self.avalanche = 0;
         self.cells[self.drop_cells[ac]].grains += 1;
+        self.cells[self.drop_cells[ac]].borged = true;
         if self.cells[self.drop_cells[ac]].grains >= CRITICAL {
             self.unstable(self.drop_cells[ac]);
         }
@@ -147,9 +150,6 @@ impl Model {
     fn unstable(&mut self, idx: usize) {
         self.avalanche += 1;
         self.cells[idx].grains -= CRITICAL;
-        if self.cells[idx].collapses < 255 {
-            self.cells[idx].collapses += 1;
-        };
         self.minusy(idx);
         self.plusy(idx);
         self.minusx(idx);
@@ -162,12 +162,10 @@ impl Model {
         } else {
             let nidx = idx - self.width;
             self.cells[nidx].grains += 1;
+            self.cells[nidx].borged = true;
             if self.cells[nidx].grains == CRITICAL {
                 self.avalanche += 1;
                 self.cells[nidx].grains -= CRITICAL;
-                if self.cells[nidx].collapses < 255 {
-                    self.cells[nidx].collapses += 1;
-                };
                 self.minusy(nidx);
                 self.plusy(nidx);
                 self.minusx(nidx);
@@ -182,12 +180,10 @@ impl Model {
         } else {
             let nidx = idx + self.width;
             self.cells[nidx].grains += 1;
+            self.cells[nidx].borged = true;
             if self.cells[nidx].grains == CRITICAL {
                 self.avalanche += 1;
                 self.cells[nidx].grains -= CRITICAL;
-                if self.cells[nidx].collapses < 255 {
-                    self.cells[nidx].collapses += 1;
-                };
                 self.minusy(nidx);
                 self.plusy(nidx);
                 self.minusx(nidx);
@@ -202,12 +198,10 @@ impl Model {
         } else {
             let nidx = idx - 1;
             self.cells[nidx].grains += 1;
+            self.cells[nidx].borged = true;
             if self.cells[nidx].grains == CRITICAL {
                 self.avalanche += 1;
                 self.cells[nidx].grains -= CRITICAL;
-                if self.cells[nidx].collapses < 255 {
-                    self.cells[nidx].collapses += 1;
-                };
                 self.minusy(nidx);
                 self.plusy(nidx);
                 self.minusx(nidx);
@@ -222,12 +216,10 @@ impl Model {
         } else {
             let nidx = idx + 1;
             self.cells[nidx].grains += 1;
+            self.cells[nidx].borged = true;
             if self.cells[nidx].grains == CRITICAL {
                 self.avalanche += 1;
                 self.cells[nidx].grains -= CRITICAL;
-                if self.cells[nidx].collapses < 255 {
-                    self.cells[nidx].collapses += 1;
-                };
                 self.minusy(nidx);
                 self.plusy(nidx);
                 self.minusx(nidx);
@@ -258,12 +250,12 @@ impl Model {
         );
     }
     /// find_extent() returns the minimum x, minimum y, width, and height of the active area of the model
-    // returned tuple matches arguments for paint()
     pub fn find_extent(&self) -> (u32, u32, u16, u16) {
+        // returned tuple matches arguments for paint()
         let (mut min_x, mut min_y) = self.calc_center_xy();
         let (mut max_x, mut max_y) = self.calc_center_xy();
         for i in 0..self.cells.len() {
-            if self.cells[i].grains != 0 && self.cells[i].collapses != 0 {
+            if self.cells[i].borged {
                 let (this_x, this_y) = self.idx_to_xy(i);
                 if this_x < min_x {
                     min_x = this_x;
@@ -314,7 +306,7 @@ impl Model {
                 let idx = self.xy_to_idx(column + tlx as usize, row + tly as usize);
                 match self.cells[idx].grains {
                     0 => {
-                        if self.cells[idx].grains == 0 && self.cells[idx].collapses == 0 {
+                        if !self.cells[idx].borged {
                             sand_painting.set_pixel(column as u32, row as u32, self.hues.untouched);
                         } else {
                             sand_painting.set_pixel(
@@ -335,6 +327,232 @@ impl Model {
         let fname = format!("Lakhesis_{:08}.png", &self.total_grains);
         sand_painting.export_png(&fname);
     }
+    /// curate() saves the model in its current state
+    pub fn curate(&self) {
+        let filename = format!("lakhesis_model_{:08}.lak", &self.total_grains);
+        match File::create(filename) {
+            Err(why) => {
+                eprintln!("Error creating text file {}", why);
+                std::process::exit(1);
+            }
+            Ok(model_lines) => {
+                let mut model_lines = LineWriter::new(model_lines);
+                // usize fields
+                let mut entry = format!(
+                    "lakhesis,alpha,{},{},{},{},{},{},{}\ndrops,",
+                    &self.width,
+                    &self.height,
+                    &self.total_grains,
+                    &self.lost_grains,
+                    &self.interval,
+                    &self.active_cells,
+                    &self.avalanche
+                );
+                model_lines.write_all(entry.as_bytes()).unwrap();
+                // array of 32 usize
+                for i in 0..MAX_DROPS {
+                    if i == MAX_DROPS - 1 {
+                        entry = format!("{}\nhues,", &self.drop_cells[i]);
+                        model_lines.write_all(entry.as_bytes()).unwrap();
+                    } else {
+                        entry = format!("{},", &self.drop_cells[i]);
+                        model_lines.write_all(entry.as_bytes()).unwrap();
+                    }
+                }
+                // hues are six sets of four f32s
+                entry = format!(
+                    "{},{},{},{},",
+                    &self.hues.untouched.r,
+                    &self.hues.untouched.g,
+                    &self.hues.untouched.b,
+                    &self.hues.untouched.a
+                );
+                model_lines.write_all(entry.as_bytes()).unwrap();
+                entry = format!(
+                    "{},{},{},{},",
+                    &self.hues.zero_grains.r,
+                    &self.hues.zero_grains.g,
+                    &self.hues.zero_grains.b,
+                    &self.hues.zero_grains.a
+                );
+                model_lines.write_all(entry.as_bytes()).unwrap();
+                entry = format!(
+                    "{},{},{},{},",
+                    &self.hues.one_grain.r,
+                    &self.hues.one_grain.g,
+                    &self.hues.one_grain.b,
+                    &self.hues.one_grain.a
+                );
+                model_lines.write_all(entry.as_bytes()).unwrap();
+                entry = format!(
+                    "{},{},{},{},",
+                    &self.hues.two_grains.r,
+                    &self.hues.two_grains.g,
+                    &self.hues.two_grains.b,
+                    &self.hues.two_grains.a
+                );
+                model_lines.write_all(entry.as_bytes()).unwrap();
+                entry = format!(
+                    "{},{},{},{},",
+                    &self.hues.three_grains.r,
+                    &self.hues.three_grains.g,
+                    &self.hues.three_grains.b,
+                    &self.hues.three_grains.a
+                );
+                model_lines.write_all(entry.as_bytes()).unwrap();
+                entry = format!(
+                    "{},{},{},{}\n",
+                    &self.hues.four_grains.r,
+                    &self.hues.four_grains.g,
+                    &self.hues.four_grains.b,
+                    &self.hues.four_grains.a
+                );
+                model_lines.write_all(entry.as_bytes()).unwrap();
+                // cells - a bit more complicated
+                let mut cursor: usize = 0;
+                let mut eof: bool = false;
+                let mut subtotal: usize = 0;
+                while !eof {
+                    // never touched cells
+                    if !self.cells[cursor].borged {
+                        let mut alt_cursor: usize = cursor;
+                        while !self.cells[alt_cursor + 1].borged && !eof {
+                            if alt_cursor < self.cells.len() - 2 {
+                                alt_cursor += 1;
+                            } else {
+                                eof = true;
+                            };
+                        }
+                        let mut count: usize = alt_cursor - cursor + 1;
+                        if eof {
+                            count += 1;
+                        };
+                        subtotal += count;
+                        entry = format!("{},f\n", &count);
+                        model_lines.write_all(entry.as_bytes()).unwrap();
+                        cursor = alt_cursor + 1;
+                    } else {
+                        // cells that have contained grains
+                        let mut alt_cursor: usize = cursor;
+                        while self.cells[alt_cursor + 1].borged && !eof {
+                            if alt_cursor < self.cells.len() - 2 {
+                                alt_cursor += 1;
+                            } else {
+                                eof = true;
+                            };
+                        }
+                        let mut count: usize = alt_cursor - cursor + 1;
+                        if eof {
+                            count += 1;
+                        };
+                        subtotal += count;
+                        entry = format!("{},t,", &count);
+                        model_lines.write_all(entry.as_bytes()).unwrap();
+                        for i in cursor..cursor + count {
+                            entry = format!("{}", &self.cells[i].grains);
+                            model_lines.write_all(entry.as_bytes()).unwrap();
+                        }
+                        model_lines.write_all("\n".to_string().as_bytes()).unwrap();
+                        cursor = alt_cursor + 1;
+                    }
+                }
+                entry = format!(
+                    "Checksum: {} of {} cells recorded",
+                    &subtotal,
+                    &self.cells.len()
+                );
+                model_lines.write_all(entry.as_bytes()).unwrap();
+            }
+        }
+    }
+    pub fn uncurate(&mut self, filename: String) {
+        let mut temp_cells: Vec<Cell> = Vec::new();
+        let source = File::open(&filename).expect("Unable to open file");
+        let reader = BufReader::new(source);
+        let lines = reader.lines();
+        for line in lines {
+            match line {
+                Err(_) => eprintln!("Error reading line: {:?}", line),
+                Ok(line) => {
+                    if line.contains("lakhesis") {
+                        let pieces: Vec<&str> = line.split(',').collect();
+                        self.width = pieces[2].parse::<usize>().unwrap();
+                        self.height = pieces[3].parse::<usize>().unwrap();
+                        self.total_grains = pieces[4].parse::<usize>().unwrap();
+                        self.lost_grains = pieces[5].parse::<usize>().unwrap();
+                        self.interval = pieces[6].parse::<usize>().unwrap();
+                        self.active_cells = pieces[7].parse::<usize>().unwrap();
+                        self.avalanche = pieces[8].parse::<usize>().unwrap();
+                    } else if line.contains("drops") {
+                        let pieces: Vec<&str> = line.split(',').collect();
+                        for i in 0..MAX_DROPS {
+                            self.drop_cells[i] = pieces[i + 1].parse::<usize>().unwrap();
+                        }
+                    } else if line.contains("hues") {
+                        let pieces: Vec<&str> = line.split(',').collect();
+                        self.hues.untouched.r = pieces[1].parse::<f32>().unwrap();
+                        self.hues.untouched.g = pieces[2].parse::<f32>().unwrap();
+                        self.hues.untouched.b = pieces[3].parse::<f32>().unwrap();
+                        self.hues.untouched.a = pieces[4].parse::<f32>().unwrap();
+                        self.hues.zero_grains.r = pieces[5].parse::<f32>().unwrap();
+                        self.hues.zero_grains.g = pieces[6].parse::<f32>().unwrap();
+                        self.hues.zero_grains.b = pieces[7].parse::<f32>().unwrap();
+                        self.hues.zero_grains.a = pieces[8].parse::<f32>().unwrap();
+                        self.hues.one_grain.r = pieces[9].parse::<f32>().unwrap();
+                        self.hues.one_grain.g = pieces[10].parse::<f32>().unwrap();
+                        self.hues.one_grain.b = pieces[11].parse::<f32>().unwrap();
+                        self.hues.one_grain.a = pieces[12].parse::<f32>().unwrap();
+                        self.hues.two_grains.r = pieces[13].parse::<f32>().unwrap();
+                        self.hues.two_grains.g = pieces[14].parse::<f32>().unwrap();
+                        self.hues.two_grains.b = pieces[15].parse::<f32>().unwrap();
+                        self.hues.two_grains.a = pieces[16].parse::<f32>().unwrap();
+                        self.hues.three_grains.r = pieces[17].parse::<f32>().unwrap();
+                        self.hues.three_grains.g = pieces[18].parse::<f32>().unwrap();
+                        self.hues.three_grains.b = pieces[19].parse::<f32>().unwrap();
+                        self.hues.three_grains.a = pieces[20].parse::<f32>().unwrap();
+                        self.hues.four_grains.r = pieces[21].parse::<f32>().unwrap();
+                        self.hues.four_grains.g = pieces[22].parse::<f32>().unwrap();
+                        self.hues.four_grains.b = pieces[23].parse::<f32>().unwrap();
+                        self.hues.four_grains.a = pieces[24].parse::<f32>().unwrap();
+                    } else if line.contains("Checksum:") {
+                        let pieces: Vec<&str> = line.split(' ').collect();
+                        if pieces[1] != pieces[3] {
+                            eprintln!(
+                                "Checksum error in lakhesis.lak: {} != {}",
+                                &pieces[1], &pieces[3]
+                            );
+                        }
+                    } else {
+                        let pieces: Vec<&str> = line.split(',').collect();
+                        if pieces[1] == "f" {
+                            for _ in 0..pieces[0].parse::<usize>().unwrap() {
+                                let temp: Cell = Cell {
+                                    grains: 0,
+                                    borged: false,
+                                };
+                                temp_cells.push(temp);
+                            }
+                        };
+                        if pieces[1] == "t" {
+                            let grains: Vec<char> = pieces[2].chars().collect();
+                            for grain in grains {
+                                let temp: Cell = Cell {
+                                    grains: grain
+                                        .to_digit(10)
+                                        .unwrap()
+                                        .try_into()
+                                        .expect("Too big"),
+                                    borged: true,
+                                };
+                                temp_cells.push(temp);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        self.cells = temp_cells;
+    }
 }
 
 #[cfg(test)]
@@ -344,12 +562,12 @@ mod tests {
     #[test]
     fn conversions() {
         let model = Model::default();
-        let idx: usize = 256_001;
+        let idx: usize = 540_001;
         let x: usize = 1;
         let y: usize = 200;
-        assert_eq!(model.xy_to_idx(x, y), 256_001);
+        assert_eq!(model.xy_to_idx(x, y), 540_001);
         assert_eq!(model.idx_to_xy(idx), (1, 200));
-        assert_eq!(model.calc_center_idx(), 461_440);
-        assert_eq!(model.calc_center_xy(), (640, 360));
+        assert_eq!(model.calc_center_idx(), 3_646_350);
+        assert_eq!(model.calc_center_xy(), (1350, 1350));
     }
 }
