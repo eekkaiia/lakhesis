@@ -11,10 +11,10 @@ use std::io::{LineWriter, Write};
 // number of grains to initiate a 'collapse' of the sandpile
 const CRITICAL: u8 = 4;
 // default width of table
-pub const MODEL_WIDTH: usize = 2_700; // 2_700 x 2_700 grid should contain a single 17M-grain sandpile
-                                      // default height of table
-pub const MODEL_HEIGHT: usize = 2_700; // this would = 7_290_000 cells
-                                       // number of iterations before simulation resets
+pub const MODEL_WIDTH: usize = 3_000; // 3_000 x 3_000 grid should contain a single 16M-grain sandpile
+// default height of table
+pub const MODEL_HEIGHT: usize = 3_000; // this would = 9_000_000 cells
+// number of iterations before simulation resets
 pub const MAX_ITERATIONS: usize = 16_777_216;
 // maximum number of drop cells
 pub const MAX_DROPS: usize = 32;
@@ -45,7 +45,7 @@ impl Hues {
             two_grains,   // YELLOW
             three_grains, // BLANK stable three grain piles make up the large triangular areas
             // set to blank to highlight 'threads' of 0, 1, and 2 grain cells
-            four_grains, // RED for version where collapse occurs at five grains
+            four_grains,  // RED for version where collapse occurs at five grains
         }
     }
 }
@@ -53,8 +53,8 @@ impl Hues {
 #[derive(Clone, Copy, Debug, Default)]
 #[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
 pub struct Cell {
-    pub grains: u8,   // number of sand grains in cell
-    pub borged: bool, // has the cell become part of a sandpile
+    pub grains: u8,     // number of sand grains in cell
+    pub borged: bool,   // has the cell become part of a sandpile
 }
 
 impl Cell {
@@ -70,14 +70,14 @@ impl Cell {
 pub struct Model {
     pub cells: Vec<Cell>,    // 1D vec of cells indexed by total width * y + x
     pub width: usize,        // width of 'table' that sand falls on
-    pub height: usize, // height of 'table' that sand falls on - not using "length" 2b compatible with screen terminology
+    pub height: usize,       // height of 'table' that sand falls on - not using "length" 2b compatible with screen terminology
     pub total_grains: usize, // current quantity of sand grains that have fallen on 'table'
-    pub lost_grains: usize, // current quantity of sand grains that have fallen off 'table'
+    pub lost_grains: usize,  // current quantity of sand grains that have fallen off 'table'
     pub drop_cells: [usize; MAX_DROPS],
     pub active_cells: usize,
     pub hues: Hues,
     pub interval: usize,
-    pub avalanche: usize, // for future implementation
+    pub avalanche: usize,    // for future implementation
 }
 
 impl Model {
@@ -230,6 +230,7 @@ impl Model {
     /// random_colors() generates random RGBA values for 'Hues' using macroquads quad_rand crate
     pub fn random_colors(&mut self) {
         srand(self.total_grains as u64);
+        self.hues.untouched = Color::new(0.00, 0.00, 0.00, 0.00);
         self.hues.zero_grains = Color::new(
             gen_range::<f32>(0.0, 1.0),
             gen_range::<f32>(0.0, 1.0),
@@ -248,6 +249,8 @@ impl Model {
             gen_range::<f32>(0.0, 1.0),
             1.0,
         );
+        self.hues.three_grains = Color::new(0.00, 0.00, 0.00, 0.00);
+        self.hues.four_grains = Color::new(0.90, 0.16, 0.22, 1.00);
     }
     /// find_extent() returns the minimum x, minimum y, width, and height of the active area of the model
     pub fn find_extent(&self) -> (u32, u32, u16, u16) {

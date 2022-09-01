@@ -1,4 +1,4 @@
-use lakhesis::{Model, MAX_DROPS, MAX_ITERATIONS, MODEL_HEIGHT, MODEL_WIDTH};
+use lakhesis::{Model, MAX_DROPS, MAX_ITERATIONS};
 
 use macroquad::color::colors::*;
 use macroquad::color::Color;
@@ -40,11 +40,11 @@ pub struct Screen {
 }
 
 impl Screen {
-    pub fn default() -> Self {
+    pub fn default(model: &Model) -> Self {
         let width = screen_width();
         let height = screen_height();
-        let tlx: f32 = (MODEL_WIDTH as f32 - width).abs() / 2.0; // initial top left corner of screen
-        let tly: f32 = (MODEL_HEIGHT as f32 - height).abs() / 2.0; // centered on model
+        let tlx: f32 = (model.width as f32 - width).abs() / 2.0; // initial top left corner of screen
+        let tly: f32 = (model.height as f32 - height).abs() / 2.0; // centered on model
         let (mx, my) = mouse_position();
         let past_ft = [0.0; 32];
         Self {
@@ -201,7 +201,7 @@ fn window_configuration() -> Conf {
 #[macroquad::main(window_configuration)]
 async fn main() {
     let mut model = Model::default();
-    let mut screen = Screen::default();
+    let mut screen = Screen::default(&model);
     // start macroquad loop
     loop {
         screen.width = screen_width(); // in case user has resized the window
@@ -466,15 +466,15 @@ async fn main() {
                 if screen.tlx < 0.0 {
                     screen.tlx = 0.0;
                 };
-                if (screen.tlx + screen.width) >= MODEL_WIDTH as f32 {
-                    screen.tlx = MODEL_WIDTH as f32 - screen.width;
+                if (screen.tlx + screen.width) >= model.width as f32 {
+                    screen.tlx = model.width as f32 - screen.width;
                 };
                 screen.tly += screen.my - (screen.height / 2.0).trunc();
                 if screen.tly < 0.0 {
                     screen.tly = 0.0;
                 };
-                if (screen.tly + screen.height) >= MODEL_HEIGHT as f32 {
-                    screen.tly = MODEL_HEIGHT as f32 - screen.height;
+                if (screen.tly + screen.height) >= model.height as f32 {
+                    screen.tly = model.height as f32 - screen.height;
                 };
             }
         }
@@ -509,7 +509,7 @@ async fn main() {
         }
         if screen.reset {
             model = Model::default();
-            screen = Screen::default();
+            screen = Screen::default(&model);
         }
         next_frame().await;
     }
