@@ -38,7 +38,7 @@ Usage
 cargo run --release
 ```
 
-There are no command line arguments. Keyboard commands are available after execution starts and are shown in an information box at the top left corner of screen. Yellow text in the "Info" box provides rudimentary context-based instructions.
+There are no command line arguments. Menu and keyboard commands are available after execution starts and are shown in an information box at the top left corner of screen. Yellow text in the "Info" box provides rudimentary context-based instructions.
 
 * [A] Add a new sandpile to the simulation. Add up to a maximum of 32 sandpiles.
 * [C] Change the colors displayed with a randomly selected new set of colors.
@@ -53,7 +53,7 @@ There are no command line arguments. Keyboard commands are available after execu
 
 The `macroquad` game engine can be compiled to run on web browsers - [directions][8]
 
-Before compiling `lakhesis` for `wasm` it is suggested that the IO_SUPPORTED constant in "main.rs" be set to "false". This will remove some features that are not supported by web browsers.
+Before compiling `lakhesis` for `wasm` it is suggested that the IO_SUPPORTED constant in "lui.rs" be set to "false". This will remove some features that are not supported by web browsers.
 
 `rust` provides a local server that can be used to host the webpage on your system.  After following the `macroquad` [directions][8] to create a wasm file and copying/editing the provided "index.html" and "mq-js-bundle.js" files into the same folder as the `wasm` file open a terminal in that project folder and install `basic-http-server`:
 
