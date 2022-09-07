@@ -1,7 +1,9 @@
-use crate::{Model, Screen, MAX_DROPS};
+use crate::{Hues, Model, Screen, MAX_DROPS};
 
+use macroquad::color::Color;
 use macroquad::input::*;
 use macroquad::math::*;
+use macroquad::texture::*;
 use macroquad::time::*;
 use macroquad::ui::{hash, root_ui, widgets};
 
@@ -14,8 +16,8 @@ const IO_SUPPORTED: bool = true;
 
 #[derive(Clone, Debug)]
 pub struct Info {
-    pub lattice_x: f32,
-    pub lattice_y: f32,
+    pub lattice_x: usize,
+    pub lattice_y: usize,
     pub context: String,
     pub current_ft: f32,
     pub longest_ft: f32,
@@ -27,8 +29,8 @@ impl Info {
     pub fn default() -> Self {
         let running_ft = [0.0; 1024];
         Self {
-            lattice_x: 0.0,
-            lattice_y: 0.0,
+            lattice_x: 0,
+            lattice_y: 0,
             context: "Start a simulation by clicking the 'Add' button below or by pressing the [A] key to add a new sandpile".to_string(),
             current_ft: 0.0,
             longest_ft: 0.0,
@@ -58,8 +60,56 @@ impl Info {
             self.ft_idx = 0
         }
         self.average_ft = self.get_average_ft();
-        self.lattice_x = screen.tlx + screen.mx;
-        self.lattice_y = screen.tly + screen.my;
+        self.lattice_x = (screen.tlx + screen.mx).trunc() as usize;
+        self.lattice_y = (screen.tly + screen.my).trunc() as usize;
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub enum Selected {
+    Null,
+    Zero,
+    #[default]
+    One,
+    Two,
+    Three,
+    Four,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Csliders {
+    pub selected: Selected,
+    pub red: f32,
+    pub green: f32,
+    pub blue: f32,
+    pub alpha: f32,
+}
+
+#[derive(Clone, Debug)]
+pub struct RevertColor {
+    pub untouched: Color,
+    pub zero_grains: Color,
+    pub one_grain: Color,
+    pub two_grains: Color,
+    pub three_grains: Color,
+    pub four_grains: Color,
+}
+impl RevertColor {
+    pub fn default(model: &Model) -> Self {
+        let untouched: Color = model.hues.untouched;
+        let zero_grains: Color = model.hues.zero_grains;
+        let one_grain: Color = model.hues.one_grain;
+        let two_grains: Color = model.hues.two_grains;
+        let three_grains: Color = model.hues.three_grains;
+        let four_grains: Color = model.hues.four_grains;
+        Self {
+            untouched,
+            zero_grains,
+            one_grain,
+            two_grains,
+            three_grains,
+            four_grains,
+        }
     }
 }
 
@@ -93,7 +143,7 @@ impl Control {
             widgets::Group::new(hash!(), Vec2::new(80., 200.))
                 .position(Vec2::new(155., 1.))
                 .ui(ui, |ui| {
-                    if widgets::Button::new("ADD").size(vec2(75., 26.)).ui(ui) {
+                    if widgets::Button::new("[A]DD").size(vec2(75., 26.)).ui(ui) {
                         if model.active_cells < MAX_DROPS {
                             self.paused = true;
                             self.add = true;
@@ -103,7 +153,7 @@ impl Control {
                                 format!("Maximum number of active points ({}) reached", MAX_DROPS);
                         }
                     }
-                    if widgets::Button::new("PAUSE").size(vec2(75., 26.)).ui(ui) {
+                    if widgets::Button::new("[P]AUSE").size(vec2(75., 26.)).ui(ui) {
                         self.paused = !self.paused;
                     }
                     if widgets::Button::new("STEP").size(vec2(75., 26.)).ui(ui) {
@@ -112,20 +162,20 @@ impl Control {
                         info.context = "Click 'STEP' again or press [Spacebar] to increment model one interval - 'PAUSE' or [P] key to resume automatic updates".to_string();
 
                     }
-                    if widgets::Button::new("MAGNIFY").size(vec2(75., 26.)).ui(ui) {
+                    if widgets::Button::new("[M]AGNIFY").size(vec2(75., 26.)).ui(ui) {
                         self.magnify = !self.magnify;
                     }
-                    if widgets::Button::new("COLOR").size(vec2(75., 26.)).ui(ui) {
+                    if widgets::Button::new("[C]OLOR").size(vec2(75., 26.)).ui(ui) {
                         self.color = true;
                         self.paused = true;
                     }
-                    if widgets::Button::new("SNAPSHOT").size(vec2(75., 26.)).ui(ui) {
+                    if widgets::Button::new("[S]NAPSHOT").size(vec2(75., 26.)).ui(ui) {
                         if IO_SUPPORTED {
                             let (min_x, min_y, extant_width, extant_height) = model.find_extent();
                             model.paint(min_x, min_y, extant_width, extant_height);
                             info.context = format!("Lakhesis_{:08}.png exported", &model.total_grains);
                         } else {
-                            info.context = "Exporting images to file not supported".to_string();
+                            info.context = "Exporting images to file not supported in web browsers".to_string();
                         }
                     }
                     if widgets::Button::new("RESET").size(vec2(75., 26.)).ui(ui) {
@@ -171,15 +221,15 @@ impl Control {
                     ui.label(None, "     ");
                     ui.same_line(0.);
                     if widgets::Button::new("UP").size(vec2(70., 20.)).ui(ui) {
-                        // move screen up 64 pixels
-                        screen.tly -= 64.0;
+                        // move screen up 256 pixels
+                        screen.tly -= 256.0;
                         if screen.tly < 0.0 {
                             screen.tly = 0.0;
                         };
                     }
                     if widgets::Button::new("LEFT").size(vec2(60., 20.)).ui(ui) {
-                        // move screen left 64 pixels
-                        screen.tlx -= 64.0;
+                        // move screen left 256 pixels
+                        screen.tlx -= 256.0;
                         if screen.tlx < 0.0 {
                             screen.tlx = 0.0;
                         };
@@ -192,8 +242,8 @@ impl Control {
                     }
                     ui.same_line(0.);
                     if widgets::Button::new("RIGHT").size(vec2(60., 20.)).ui(ui) {
-                        // move screen right 64 pixels
-                        screen.tlx += 64.0;
+                        // move screen right 256 pixels
+                        screen.tlx += 256.0;
                         if (screen.tlx + screen.width) >= model.width as f32 {
                             screen.tlx = model.width as f32 - screen.width;
                         };
@@ -201,8 +251,8 @@ impl Control {
                     ui.label(None, "     ");
                     ui.same_line(0.);
                     if widgets::Button::new("DOWN").size(vec2(70., 20.)).ui(ui) {
-                        // move screen down 64 pixels
-                        screen.tly += 64.0;
+                        // move screen down 256 pixels
+                        screen.tly += 256.0;
                         if (screen.tly + screen.height) >= model.height as f32 {
                             screen.tly = model.height as f32 - screen.height;
                         };
@@ -210,8 +260,8 @@ impl Control {
                 });
         });
     }
-    /// Check for keyboard commands
-    pub fn check_keyboard(&mut self, model: &mut Model, info: &mut Info, screen: &mut Screen) {
+    /// check_keyboard() handles keyboard commands
+    pub fn check_keyboard(&mut self, model: &mut Model, info: &mut Info) {
         match get_last_key_pressed() {
             Some(KeyCode::A) => {
                 // add a new active cell
@@ -224,7 +274,6 @@ impl Control {
                         format!("Maximum number of active points ({}) reached", MAX_DROPS);
                 }
             }
-            Some(KeyCode::B) => screen.background = !screen.background, // toggle background between BLACK and WHITE
             Some(KeyCode::C) => {
                 // cause a color change for sandpiles
                 self.color = true;
@@ -234,7 +283,8 @@ impl Control {
                 if IO_SUPPORTED {
                     model.curate();
                 } else {
-                    info.context = "Exporting data to file not supported".to_string();
+                    info.context =
+                        "Exporting data to file not supported in web browsers".to_string();
                 }
             }
             Some(KeyCode::H) => {
@@ -248,7 +298,8 @@ impl Control {
                                 .to_string();
                     }
                 } else {
-                    info.context = "Loading from a saved file is not supported".to_string();
+                    info.context =
+                        "Loading from a saved file is not supported in web browsers".to_string();
                 }
             }
             Some(KeyCode::I) => {
@@ -279,7 +330,8 @@ impl Control {
                     model.paint(min_x, min_y, extant_width, extant_height);
                     info.context = format!("Lakhesis_{:08}.png exported", &model.total_grains);
                 } else {
-                    info.context = "Exporting images to file not supported".to_string();
+                    info.context =
+                        "Exporting images to file not supported in web browsers".to_string();
                 }
             }
             Some(KeyCode::V) => {
@@ -293,7 +345,8 @@ impl Control {
 							&VIDEO_FRAME_COUNT);
                     }
                 } else {
-                    info.context = "Exporting images to file not supported".to_string();
+                    info.context =
+                        "Exporting images to file not supported in web browsers".to_string();
                 }
             }
             Some(KeyCode::Space) => {
@@ -322,10 +375,221 @@ impl Control {
                 if self.video > 0 {
                     self.video = 0;
                 };
-                info.context = "<--Click here to hide this control panel".to_string();
+                info.context = "<--Click here to hide the control panel".to_string();
             }
             None => (),
             _ => (),
         }
+    }
+    /// change_color() allows user selected or random colors
+    pub fn change_color(
+        &mut self,
+        model: &mut Model,
+        screen: &mut Screen,
+        info: &mut Info,
+        rcolor: &mut RevertColor,
+        csliders: &mut Csliders,
+    ) {
+        let untouched_color = Image::gen_image_color(90, 60, model.hues.untouched);
+        let untouched_texture = Texture2D::from_image(&untouched_color);
+        let zero_color = Image::gen_image_color(90, 60, model.hues.zero_grains);
+        let zero_texture = Texture2D::from_image(&zero_color);
+        let one_color = Image::gen_image_color(90, 60, model.hues.one_grain);
+        let one_texture = Texture2D::from_image(&one_color);
+        let two_color = Image::gen_image_color(90, 60, model.hues.two_grains);
+        let two_texture = Texture2D::from_image(&two_color);
+        let three_color = Image::gen_image_color(90, 60, model.hues.three_grains);
+        let three_texture = Texture2D::from_image(&three_color);
+
+        let slider_color: Color =
+            Color::new(csliders.red, csliders.green, csliders.blue, csliders.alpha);
+        let selected_color = Image::gen_image_color(90, 60, slider_color);
+        let selected_texture = Texture2D::from_image(&selected_color);
+
+        let w_width: f32 = 392.0;
+        let w_height: f32 = 275.0;
+        let w_tlx = (screen.width - w_width) / 2.0;
+        let w_tly = (screen.height - w_height) / 2.0;
+        widgets::Window::new(hash!(), vec2(w_tlx, w_tly), vec2(w_width, w_height))
+            .label("Colors")
+            .ui(&mut *root_ui(), |ui| {
+                ui.label(None, "   Null       Zero        One       Two       Three");
+                if widgets::Button::new(untouched_texture)
+                    .size(vec2(75., 26.))
+                    .ui(ui)
+                {
+                    csliders.selected = Selected::Null;
+                    csliders.red = model.hues.untouched.r;
+                    csliders.green = model.hues.untouched.g;
+                    csliders.blue = model.hues.untouched.b;
+                    csliders.alpha = model.hues.untouched.a;
+                }
+                ui.same_line(0.);
+                if widgets::Button::new(zero_texture)
+                    .size(vec2(75., 26.))
+                    .ui(ui)
+                {
+                    csliders.selected = Selected::Zero;
+                    csliders.red = model.hues.zero_grains.r;
+                    csliders.green = model.hues.zero_grains.g;
+                    csliders.blue = model.hues.zero_grains.b;
+                    csliders.alpha = model.hues.zero_grains.a;
+                }
+                ui.same_line(0.);
+                if widgets::Button::new(one_texture)
+                    .size(vec2(75., 26.))
+                    .ui(ui)
+                {
+                    csliders.selected = Selected::One;
+                    csliders.red = model.hues.one_grain.r;
+                    csliders.green = model.hues.one_grain.g;
+                    csliders.blue = model.hues.one_grain.b;
+                    csliders.alpha = model.hues.one_grain.a;
+                }
+                ui.same_line(0.);
+                if widgets::Button::new(two_texture)
+                    .size(vec2(75., 26.))
+                    .ui(ui)
+                {
+                    csliders.selected = Selected::Two;
+                    csliders.red = model.hues.two_grains.r;
+                    csliders.green = model.hues.two_grains.g;
+                    csliders.blue = model.hues.two_grains.b;
+                    csliders.alpha = model.hues.two_grains.a;
+                }
+                ui.same_line(0.);
+                if widgets::Button::new(three_texture)
+                    .size(vec2(75., 26.))
+                    .ui(ui)
+                {
+                    csliders.selected = Selected::Three;
+                    csliders.red = model.hues.three_grains.r;
+                    csliders.green = model.hues.three_grains.g;
+                    csliders.blue = model.hues.three_grains.b;
+                    csliders.alpha = model.hues.three_grains.a;
+                }
+                ui.label(
+                    None,
+                    &format!(
+                        "              {:?}-grain color selected",
+                        &csliders.selected
+                    ),
+                );
+                ui.label(None, "     ");
+                ui.same_line(0.0);
+                if widgets::Button::new(selected_texture)
+                    .size(vec2(w_width - 100.0, 26.0))
+                    .ui(ui)
+                {
+                    match csliders.selected {
+                        Selected::Null => {
+                            model.hues.untouched = Color::new(
+                                csliders.red,
+                                csliders.green,
+                                csliders.blue,
+                                csliders.alpha,
+                            );
+                        }
+                        Selected::Zero => {
+                            model.hues.zero_grains = Color::new(
+                                csliders.red,
+                                csliders.green,
+                                csliders.blue,
+                                csliders.alpha,
+                            );
+                        }
+                        Selected::One => {
+                            model.hues.one_grain = Color::new(
+                                csliders.red,
+                                csliders.green,
+                                csliders.blue,
+                                csliders.alpha,
+                            );
+                        }
+                        Selected::Two => {
+                            model.hues.two_grains = Color::new(
+                                csliders.red,
+                                csliders.green,
+                                csliders.blue,
+                                csliders.alpha,
+                            );
+                        }
+                        Selected::Three => {
+                            model.hues.three_grains = Color::new(
+                                csliders.red,
+                                csliders.green,
+                                csliders.blue,
+                                csliders.alpha,
+                            );
+                        }
+                        _ => (),
+                    }
+                    info.context= "After editing individual grain-colors click 'Accept' to restart simulation".to_string();
+                }
+                
+                ui.label(None, "    Adjust sliders and click the new color to set");
+                ui.slider(hash!(), "  Red", 0f32..1f32, &mut csliders.red);
+                ui.slider(hash!(), "  Green", 0f32..1f32, &mut csliders.green);
+                ui.slider(hash!(), "  Blue", 0f32..1f32, &mut csliders.blue);
+                ui.slider(hash!(), "  Alpha", 0f32..1f32, &mut csliders.alpha);
+
+                ui.label(None, " Null = background     An alpha of 0.00 is transparent");
+                if widgets::Button::new("Accept").size(vec2(75., 26.)).ui(ui) {
+                    *rcolor = RevertColor::default(model);
+                    csliders.selected = Selected::One;
+                    csliders.red = model.hues.one_grain.r;
+                    csliders.green = model.hues.one_grain.g;
+                    csliders.blue = model.hues.one_grain.b;
+                    csliders.alpha = model.hues.one_grain.a;
+                    info.context = "<--Click here to hide the control panel".to_string();
+                    self.color = false;
+                    self.paused = false;
+                }
+                ui.same_line(0.);
+                if widgets::Button::new("Revert").size(vec2(75., 26.)).ui(ui) {
+                    model.hues.untouched = rcolor.untouched;
+                    model.hues.zero_grains = rcolor.zero_grains;
+                    model.hues.one_grain = rcolor.one_grain;
+                    model.hues.two_grains = rcolor.two_grains;
+                    model.hues.three_grains = rcolor.three_grains;
+                    info.context = "Click 'Accept' to save previous colors and exit or make more changes".to_string();
+                    csliders.selected = Selected::One;
+                    csliders.red = model.hues.one_grain.r;
+                    csliders.green = model.hues.one_grain.g;
+                    csliders.blue = model.hues.one_grain.b;
+                    csliders.alpha = model.hues.one_grain.a;
+                }
+                ui.same_line(0.);
+                if widgets::Button::new("Random").size(vec2(75., 26.)).ui(ui) {
+                    model.random_colors();
+                    info.context = "Click 'Accept' to save the random colors and exit, make more changes, or 'Revert' to go back to last selection".to_string();
+                    csliders.selected = Selected::One;
+                    csliders.red = model.hues.one_grain.r;
+                    csliders.green = model.hues.one_grain.g;
+                    csliders.blue = model.hues.one_grain.b;
+                    csliders.alpha = model.hues.one_grain.a;
+                }
+                ui.same_line(0.);
+                if widgets::Button::new("Default").size(vec2(75., 26.)).ui(ui) {
+                    model.hues = Hues::default();
+                    info.context = "Click 'Accept' to save default colors and exit, make more changes, or 'Revert' to go back to last selection".to_string();
+                    csliders.selected = Selected::One;
+                    csliders.red = model.hues.one_grain.r;
+                    csliders.green = model.hues.one_grain.g;
+                    csliders.blue = model.hues.one_grain.b;
+                    csliders.alpha = model.hues.one_grain.a;
+                }
+                ui.same_line(0.);
+                if widgets::Button::new("Cancel").size(vec2(75., 26.)).ui(ui) {
+                    csliders.selected = Selected::One;
+                    csliders.red = model.hues.one_grain.r;
+                    csliders.green = model.hues.one_grain.g;
+                    csliders.blue = model.hues.one_grain.b;
+                    csliders.alpha = model.hues.one_grain.a;
+                    info.context = "<--Click here to hide the control panel".to_string();
+                    self.color = false;
+                    self.paused = false;
+                }
+            });
     }
 }

@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 
-mod colorize;
 mod lui;
 mod model;
 mod screen;
 
-pub use colorize::{color_button, Csliders, Ncolor, Selected};
-pub use lui::{Control, Info};
+pub use lui::{Control, Csliders, Info, RevertColor, Selected};
 pub use model::{Hues, Model, MAX_DROPS, MAX_ITERATIONS};
 pub use screen::Screen;

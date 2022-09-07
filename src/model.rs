@@ -1,5 +1,6 @@
 use macroquad::prelude::Color;
 use macroquad::prelude::BLANK;
+use macroquad::prelude::get_time;
 use macroquad::rand::gen_range;
 use macroquad::rand::srand;
 use macroquad::texture::Image;
@@ -40,7 +41,7 @@ pub struct Hues {
                             // left in for variation where collapse occurs at five grains
 }
 impl Hues {
-    fn default() -> Self {
+    pub fn default() -> Self {
         let untouched: Color = Color::new(0.00, 0.00, 0.00, 0.00);
         let zero_grains: Color = Color::new(0.00, 0.47, 0.95, 1.00);
         let one_grain: Color = Color::new(0.00, 0.89, 0.19, 1.00);
@@ -223,7 +224,8 @@ impl Model {
     }
     /// random_colors() generates random RGBA values for 'Hues' using macroquads quad_rand crate
     pub fn random_colors(&mut self) {
-        srand(self.total_grains as u64);
+        
+        srand(self.total_grains as u64 + (get_time() * 256.0).trunc() as u64);
         self.hues.untouched = Color::new(0.00, 0.00, 0.00, 0.00);
         self.hues.zero_grains = Color::new(
             gen_range::<f32>(0.0, 1.0),

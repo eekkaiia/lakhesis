@@ -1,10 +1,9 @@
 use lakhesis::Screen;
-use lakhesis::{color_button, Csliders, Ncolor};
 use lakhesis::{Control, Info};
+use lakhesis::{Csliders, RevertColor, Selected};
 use lakhesis::{Model, MAX_ITERATIONS};
 
 use macroquad::color::colors::*;
-use macroquad::color::Color;
 use macroquad::input::*;
 use macroquad::math::*;
 use macroquad::shapes::*;
@@ -30,102 +29,24 @@ fn window_configuration() -> Conf {
 async fn main() {
     let mut model = Model::default();
     let mut screen = Screen::default(&model);
-
-    // color box ui
-    let mut ncolor: Ncolor = Ncolor::default(&model);
-    let mut csliders: Csliders = Csliders::default();
-
-    // info box ui
     let mut info = Info::default();
     let mut control = Control::default();
-    // start macroquad loop
+    let mut csliders: Csliders = Csliders {
+        selected: Selected::One,
+        red: model.hues.one_grain.r,
+        green: model.hues.one_grain.g,
+        blue: model.hues.one_grain.b,
+        alpha: model.hues.one_grain.a,
+    };
+    let mut rcolor: RevertColor = RevertColor::default(&model);
     loop {
-        screen.width = screen_width(); // in case user has resized the window
-        screen.height = screen_height();
-
-        clear_background(model.hues.untouched);
-
-        // draw a dot at the center of the model if visible
-        let (navel_x, navel_y) = model.calc_center_xy();
-        if (navel_x as f32) >= screen.tlx
-            && (navel_x as f32) <= (screen.tlx + screen.width)
-            && (navel_y as f32) >= screen.tly
-            && (navel_y as f32) <= (screen.tly + screen.height)
-        {
-            let center_x: f32 = navel_x as f32 - screen.tlx;
-            let center_y: f32 = navel_y as f32 - screen.tly;
-            draw_rectangle(center_x, center_y, 2.0, 2.0, GRAY);
-        }
-        // draw abelian sand model
-        screen.draw(&model);
-        // get current mouse position and limit extent if magnify is on
-        (screen.mx, screen.my) = mouse_position();
-        if control.magnify {
-            if screen.mx < 16.0 {
-                screen.mx = 16.0;
-            };
-            if screen.mx > screen.width - 16.0 {
-                screen.mx = screen.width - 16.0;
-            };
-            if screen.my < 16.0 {
-                screen.my = 16.0;
-            };
-            if screen.my > screen.height - 16.0 {
-                screen.my = screen.height - 16.0;
-            };
-            screen.magnify_box(&model);
-        }
-
-        // draw crosshairs - thick ones if waiting to add active cell
-        if screen.mx >= 0.0
-            && screen.mx < screen.width
-            && screen.my >= 0.0
-            && screen.my < screen.height
-        {
-            let mut curs: Color = WHITE;
-            if !screen.background {
-                curs = BLACK;
-            };
-            if control.add {
-                draw_line(
-                    screen.mx - 10.0,
-                    screen.my,
-                    screen.mx + 10.0,
-                    screen.my,
-                    3.0,
-                    curs,
-                );
-                draw_line(
-                    screen.mx,
-                    screen.my - 10.0,
-                    screen.mx,
-                    screen.my + 10.0,
-                    3.0,
-                    curs,
-                );
-            } else {
-                draw_line(
-                    screen.mx - 10.0,
-                    screen.my,
-                    screen.mx + 10.0,
-                    screen.my,
-                    1.0,
-                    curs,
-                );
-                draw_line(
-                    screen.mx,
-                    screen.my - 10.0,
-                    screen.mx,
-                    screen.my + 10.0,
-                    1.0,
-                    curs,
-                );
-            }
-        }
-
-        // is left mouse button pressed
+        screen.width = screen_width(); // start macroquad loop
+        screen.height = screen_height(); // check screen size in case user has resized the window
+        clear_background(model.hues.untouched); // clear background using color designated for untouched cells
+        screen.draw(&model); // draw sandpile model
+        screen.crosshairs(&model, &control); // add lakhesis cursor on top of model
+        // check if a new sandpile is pending and if the left mouse button is pressed
         if control.add && is_mouse_button_pressed(MouseButton::Left) {
-            // if add - get mouse position to add new drop cell
             model.active_cells += 1;
             model.drop_cells[model.active_cells - 1] = model.xy_to_idx(
                 (screen.mx + screen.tlx).trunc() as usize,
@@ -135,7 +56,7 @@ async fn main() {
             control.add = false;
             info.context = "<--Click here to hide the control panel".to_string();
         }
-        // if !paused or spacebar pressed and a drop cell is added, drop sand grains and resolve unstable sandpiles
+        // if !paused or spacebar pressed and a drop cell is active, drop sand grains and resolve unstable sandpiles
         if (!control.paused || control.increment) && model.active_cells > 0 {
             for _ in 0..model.interval {
                 model.add_grain();
@@ -161,44 +82,38 @@ async fn main() {
             }
             control.increment = false;
         }
+        // check if model is approaching undefined behaviour around 20M sand grains
         if model.total_grains >= MAX_ITERATIONS {
             control.paused = true;
         }
+        // reset, if requested
         if control.reset {
             model = Model::default();
             screen = Screen::default(&model);
-            // color box ui
-            ncolor = Ncolor::default(&model);
-            csliders = Csliders::default();
-            // info box ui
             info = Info::default();
             control = Control::default();
         }
-
-        // TESTING colors dialog
+        // change model colors, if requested
         if control.color {
-            color_button(
-                &mut model,
-                &mut control,
-                &mut screen,
-                &mut ncolor,
-                &mut csliders,
-            );
+            // info.context = "Click one of the five colors and move sliders to adjust color - changes are shown on main screen when box with new color is clicked".to_string();
+            control.change_color(&mut model, &mut screen, &mut info, &mut rcolor, &mut csliders);
         }
-
+        // display an icon in top left corner that toggles panel visibilities
         if root_ui().button(None, "<>") {
             control.visible = !control.visible;
         }
-
         // update info and show control panel
         info.update(&screen);
+        if control.paused {
+            draw_rectangle_lines(0.0, 0.0, 21.0, 23.0, 3.0, ORANGE);
+        }
         if control.visible {
-            draw_rectangle(18.0, 0.0, screen.width, 19.0, BLACK);
-            draw_text(&info.context, 24.0, 13.0, 16.0, YELLOW);
+            draw_rectangle(25.0, 0.0, screen.width, 19.0, BLACK);
+            draw_text(&info.context, 27.0, 13.0, 16.0, YELLOW);
             control.draw_panel(&mut model, &mut info, &mut screen);
         }
         // has a key been pressed?
-        control.check_keyboard(&mut model, &mut info, &mut screen);
+        control.check_keyboard(&mut model, &mut info);
         next_frame().await;
     }
 }

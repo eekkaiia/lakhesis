@@ -1,4 +1,4 @@
-use crate::Model;
+use crate::{Control, Model};
 
 use macroquad::color::colors::*;
 use macroquad::color::Color;
@@ -15,7 +15,6 @@ pub struct Screen {
     pub height: f32,
     pub mx: f32,
     pub my: f32,
-    pub background: bool,
 }
 impl Screen {
     pub fn default(model: &Model) -> Self {
@@ -31,11 +30,21 @@ impl Screen {
             height,
             mx,
             my,
-            background: true,
         }
     }
     /// draw() maps visible portion of model to screen
     pub fn draw(&self, model: &Model) {
+        // draw a dot at the center of the model if visible
+        let (navel_x, navel_y) = model.calc_center_xy();
+        if (navel_x as f32) >= self.tlx
+            && (navel_x as f32) <= (self.tlx + self.width)
+            && (navel_y as f32) >= self.tly
+            && (navel_y as f32) <= (self.tly + self.height)
+        {
+            let center_x: f32 = navel_x as f32 - self.tlx;
+            let center_y: f32 = navel_y as f32 - self.tly;
+            draw_rectangle(center_x, center_y, 2.0, 2.0, GRAY);
+        }
         // redrawing entire screen reduces fps - use model find_extent() to only update active part of model
         let mut render: bool = true;
         let (left, top, left_plus, top_plus) = model.find_extent();
@@ -90,12 +99,19 @@ impl Screen {
     pub fn magnify_box(&self, model: &Model) {
         let top_left_x = (self.mx - 16.0).trunc() as usize;
         let top_left_y = (self.my - 16.0).trunc() as usize;
-        let mut bg: Color = BLACK;
-        let mut curs: Color = WHITE;
-        if !self.background {
-            bg = WHITE;
-            curs = BLACK;
+        let mut bg: Color = model.hues.untouched;
+        if bg.a <= 0.5 {
+            bg.a = 1.0;
         };
+        draw_rectangle(
+            // draw magnified area background
+            self.width - 151.0,
+            self.height - 151.0,
+            128.0,
+            128.0,
+            bg,
+        );
+        let curs: Color = WHITE;
         for i in 0..32 {
             for j in 0..32 {
                 let idx = model.xy_to_idx(
@@ -109,9 +125,15 @@ impl Screen {
                             pixel_color = model.hues.zero_grains;
                         }
                     }
-                    1 => pixel_color = model.hues.one_grain,
-                    2 => pixel_color = model.hues.two_grains,
-                    3 => pixel_color = model.hues.three_grains,
+                    1 => {
+                        pixel_color = model.hues.one_grain;
+                    }
+                    2 => {
+                        pixel_color = model.hues.two_grains;
+                    }
+                    3 => {
+                        pixel_color = model.hues.three_grains;
+                    }
                     _ => pixel_color = model.hues.four_grains,
                 };
                 draw_rectangle(
@@ -141,5 +163,36 @@ impl Screen {
             2.0,
             curs,
         );
+    }
+    /// crosshairs() draws the lakhesis cursor
+    pub fn crosshairs(&mut self, model: &Model, control: &Control) {
+        // get current mouse position and limit extent if magnify is on
+        (self.mx, self.my) = mouse_position();
+        if control.magnify {
+            if self.mx < 16.0 {
+                self.mx = 16.0;
+            };
+            if self.mx > self.width - 16.0 {
+                self.mx = self.width - 16.0;
+            };
+            if self.my < 16.0 {
+                self.my = 16.0;
+            };
+            if self.my > self.height - 16.0 {
+                self.my = self.height - 16.0;
+            };
+            self.magnify_box(model);
+        }
+        // draw crosshairs - thick ones if waiting to add active cell
+        if self.mx >= 0.0 && self.mx < self.width && self.my >= 0.0 && self.my < self.height {
+            let curs: Color = WHITE;
+            if control.add {
+                draw_line(self.mx - 10.0, self.my, self.mx + 10.0, self.my, 3.0, curs);
+                draw_line(self.mx, self.my - 10.0, self.mx, self.my + 10.0, 3.0, curs);
+            } else {
+                draw_line(self.mx - 10.0, self.my, self.mx + 10.0, self.my, 1.0, curs);
+                draw_line(self.mx, self.my - 10.0, self.mx, self.my + 10.0, 1.0, curs);
+            }
+        }
     }
 }
