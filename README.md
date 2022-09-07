@@ -14,7 +14,7 @@ Description
 
 I noticed that adding a second sand pile resulted in interesting, and recurring, patterns at the boundary between the two piles. Lakhesis has been set up in order to explore how these boundary patterns develop and how factors such as the number of additional piles and their orientation and distance from each other affect these patterns. The lattice is set to 3,000 by 3,000 pixels, large enough to contain a single sandpile of approximately 16 million sand grains or an equivalent number distributed between multiple sandpiles. The color of cells with three grains is set to transparent black in order to emphasis the patterns that cross through these stable areas. Many of these patterns have the appearance of threads intertwining and weaving into textile-like surfaces (i.e. the name of the project - apologies for the mixed metaphors).
 
-![Lakhesis threads](/images/LakhesisThread.GIF)    [Check out a `wasm` version that runs in your web browser][7]
+![Lakhesis threads](/images/LakhesisThread.GIF)    [Check out a `wasm` version that runs in your web browser][7] - give it a few seconds to load
 
 Keywords
 --------
