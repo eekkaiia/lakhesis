@@ -45,7 +45,7 @@ async fn main() {
         clear_background(model.hues.untouched); // clear background using color designated for untouched cells
         screen.draw(&model); // draw sandpile model
         screen.crosshairs(&model, &control); // add lakhesis cursor on top of model
-        // check if a new sandpile is pending and if the left mouse button is pressed
+                                             // check if a new sandpile is pending and if the left mouse button is pressed
         if control.add && is_mouse_button_pressed(MouseButton::Left) {
             model.active_cells += 1;
             model.drop_cells[model.active_cells - 1] = model.xy_to_idx(
@@ -96,7 +96,13 @@ async fn main() {
         // change model colors, if requested
         if control.color {
             // info.context = "Click one of the five colors and move sliders to adjust color - changes are shown on main screen when box with new color is clicked".to_string();
-            control.change_color(&mut model, &mut screen, &mut info, &mut rcolor, &mut csliders);
+            control.change_color(
+                &mut model,
+                &mut screen,
+                &mut info,
+                &mut rcolor,
+                &mut csliders,
+            );
         }
         // display an icon in top left corner that toggles panel visibilities
         if root_ui().button(None, "<>") {

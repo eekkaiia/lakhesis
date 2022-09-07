@@ -1,6 +1,6 @@
+use macroquad::prelude::get_time;
 use macroquad::prelude::Color;
 use macroquad::prelude::BLANK;
-use macroquad::prelude::get_time;
 use macroquad::rand::gen_range;
 use macroquad::rand::srand;
 use macroquad::texture::Image;
@@ -224,7 +224,6 @@ impl Model {
     }
     /// random_colors() generates random RGBA values for 'Hues' using macroquads quad_rand crate
     pub fn random_colors(&mut self) {
-        
         srand(self.total_grains as u64 + (get_time() * 256.0).trunc() as u64);
         self.hues.untouched = Color::new(0.00, 0.00, 0.00, 0.00);
         self.hues.zero_grains = Color::new(

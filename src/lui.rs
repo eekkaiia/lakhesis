@@ -12,7 +12,7 @@ const MAX_INTERVAL: usize = 16_384;
 // number of PNG frames to create 10 second video at 60fps
 const VIDEO_FRAME_COUNT: usize = 600;
 // set IO_SUPPORTED to false when compiling for WASM - currently saving an image to disk is not supported from web browser
-const IO_SUPPORTED: bool = true;
+const IO_SUPPORTED: bool = false;
 
 #[derive(Clone, Debug)]
 pub struct Info {
@@ -202,7 +202,7 @@ impl Control {
                 .position(Vec2::new(1., 202.))
                 .ui(ui, |ui| {
                     if widgets::Button::new("INCREASE").size(vec2(75., 20.)).ui(ui) {
-                        // increase interval by 4x up to 65_536 (4^8)
+                        // increase interval by 4x up to 16_384 (4^7)
                         if model.interval < MAX_INTERVAL && self.video == 0 {
                             model.interval *= 4;
                         };
@@ -526,7 +526,6 @@ impl Control {
                     }
                     info.context= "After editing individual grain-colors click 'Accept' to restart simulation".to_string();
                 }
-                
                 ui.label(None, "    Adjust sliders and click the new color to set");
                 ui.slider(hash!(), "  Red", 0f32..1f32, &mut csliders.red);
                 ui.slider(hash!(), "  Green", 0f32..1f32, &mut csliders.green);
