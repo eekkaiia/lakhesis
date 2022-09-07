@@ -20,15 +20,19 @@ resolver                = "2"
 license                 = "Apache-2.0"
 authors                 = ["Erik Steinbach <eekkaiia@gmail.com>"]
 description             = """
-                            A different take on abelian sandpile models
+                            A different take on sandpile models
                           """
 categories              = ["computer-modeling"]
 keywords                = [
+                            "simulation",
+                            "sandpile model",
+                            "bak-tang-wiesenfeld",
                             "abelian sandpile model",
                             "cellular automaton",
                             "self-organized criticality",
                             "rust",
-                            "macroquad"
+                            "macroquad",
+                            "wasm",
                           ]
 homepage                = "https://github.com/eekkaiia/lakhesis"
 repository              = "https://github.com/eekkaiia/lakhesis"

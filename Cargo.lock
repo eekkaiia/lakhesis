@@ -330,9 +330,9 @@ checksum = "658fa1faf7a4cc5f057c9ee5ef560f717ad9d8dc66d975267f709624d6e1ab88"
 
 [[package]]
 name = "quad-snd"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86e0b4259cfd6a317a46df7b7cb4c09a08ba150642e6f6fb7df5a6b3450a0a29"
+checksum = "7ecdfc112b78338e6f27a9342f746c44d490e59d5962eb745a4bb960ea72f7ac"
 dependencies = [
  "audir-sles",
  "audrey",
